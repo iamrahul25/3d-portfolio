@@ -18,6 +18,8 @@ export type SceneProps = {
   view: View;
   autoRotate: boolean;
   zoom: { id: number; dir: 1 | -1 };
+  immersive?: boolean;
+  resetKey?: number;
   onAction: (action: ScreenAction) => void;
   onReady?: () => void;
 };
@@ -29,6 +31,8 @@ const FOCUS_TARGET = new THREE.Vector3(...MAIN_MONITOR.position);
 const FOCUS_ELEVATION = THREE.MathUtils.degToRad(32);
 const FOCUS_DIR = new THREE.Vector3(0, Math.sin(FOCUS_ELEVATION), Math.cos(FOCUS_ELEVATION));
 const UI_RESERVED_PX = 230;
+const IMMERSIVE_RESERVED_PX = 90;
+const ROOM_BOUNDS = new THREE.Box3(new THREE.Vector3(-2.7, 0, -2.25), new THREE.Vector3(2.7, 3, 1.95));
 const { ACTION } = CameraControlsImpl;
 
 function overviewDistance(aspect: number) {
@@ -41,19 +45,58 @@ function overviewOffset(aspect: number): [number, number] {
   return [0, 0];
 }
 
-function focusDistance(aspect: number, heightPx: number) {
+function focusDistance(aspect: number, heightPx: number, reservedPx: number) {
   const t = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
-  const usable = THREE.MathUtils.clamp((heightPx - UI_RESERVED_PX) / heightPx, 0.45, 0.85);
+  const usable = THREE.MathUtils.clamp((heightPx - reservedPx) / heightPx, 0.45, 0.85);
   const projected = Math.cos(FOCUS_ELEVATION + MAIN_MONITOR.tilt);
   const h = (MAIN_MONITOR.height * projected * 0.55) / (t * usable);
   const w = (MAIN_MONITOR.width * 0.56) / (t * aspect * 0.94);
   return Math.max(1.4, w, h);
 }
 
-function CameraRig({ view, autoRotate, zoom }: Pick<SceneProps, "view" | "autoRotate" | "zoom">) {
+const _target = new THREE.Vector3();
+const _position = new THREE.Vector3();
+const _forward = new THREE.Vector3();
+const _right = new THREE.Vector3();
+const _up = new THREE.Vector3();
+
+// Dollies by `scale` while keeping the point under (ndcX, ndcY) fixed on screen.
+// camera-controls' dollyToCursor ignores focal offset, which the overview framing relies on.
+function zoomAtPoint(c: CameraControlsImpl, scale: number, ndcX: number, ndcY: number) {
+  const target = c.getTarget(_target, true);
+  const position = c.getPosition(_position, true);
+  const dist = position.distanceTo(target);
+  const next = THREE.MathUtils.clamp(dist * scale, c.minDistance, c.maxDistance);
+  if (Math.abs(next - dist) < 1e-4) return false;
+
+  const camera = c.camera as THREE.PerspectiveCamera;
+  const halfH = dist * Math.tan(THREE.MathUtils.degToRad(camera.getEffectiveFOV() / 2));
+  _forward.subVectors(target, position).normalize();
+  _right.crossVectors(_forward, camera.up).normalize();
+  _up.crossVectors(_right, _forward);
+  const k = 1 - next / dist;
+  target.addScaledVector(_right, ndcX * halfH * camera.aspect * k).addScaledVector(_up, ndcY * halfH * k);
+  c.moveTo(target.x, target.y, target.z, true);
+  c.dollyTo(next, true);
+  return true;
+}
+
+function toNdc(el: HTMLElement, clientX: number, clientY: number) {
+  const rect = el.getBoundingClientRect();
+  return [((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1] as const;
+}
+
+function CameraRig({
+  view,
+  autoRotate,
+  zoom,
+  immersive = false,
+  resetKey = 0,
+}: Pick<SceneProps, "view" | "autoRotate" | "zoom" | "immersive" | "resetKey">) {
   const controls = useRef<CameraControlsImpl>(null);
   const aspect = useThree((s) => s.size.width / s.size.height);
   const heightPx = useThree((s) => s.size.height);
+  const canvas = useThree((s) => s.gl.domElement);
   const lastInteraction = useRef(0);
   const introDone = useRef(false);
 
@@ -61,12 +104,10 @@ function CameraRig({ view, autoRotate, zoom }: Pick<SceneProps, "view" | "autoRo
     const c = controls.current;
     if (!c) return;
     c.mouseButtons.left = ACTION.ROTATE;
-    c.mouseButtons.right = ACTION.NONE;
     c.mouseButtons.middle = ACTION.NONE;
-    c.mouseButtons.wheel = ACTION.NONE;
     c.touches.one = ACTION.TOUCH_ROTATE;
-    c.touches.two = ACTION.TOUCH_DOLLY;
     c.touches.three = ACTION.NONE;
+    c.setBoundary(ROOM_BOUNDS);
 
     const onStart = () => (lastInteraction.current = Infinity);
     const onEnd = () => (lastInteraction.current = performance.now());
@@ -78,14 +119,96 @@ function CameraRig({ view, autoRotate, zoom }: Pick<SceneProps, "view" | "autoRo
     };
   }, []);
 
+  // Outside immersive mode, wheel and pinch go through zoomAtPoint (see the effects below).
+  // dollyToCursor assumes a zero focal offset, which immersive framing guarantees.
+  useLayoutEffect(() => {
+    const c = controls.current;
+    if (!c) return;
+    c.mouseButtons.wheel = immersive ? ACTION.DOLLY : ACTION.NONE;
+    c.mouseButtons.right = immersive ? ACTION.TRUCK : ACTION.NONE;
+    c.touches.two = immersive ? ACTION.TOUCH_DOLLY_TRUCK : ACTION.NONE;
+    c.dollyToCursor = immersive;
+  }, [immersive]);
+
+  // The wheel only zooms while the hero is fully in view, and falls through to page
+  // scrolling at the zoom limits so the hero never traps the scroll.
+  useEffect(() => {
+    if (immersive) return;
+    const onWheel = (e: WheelEvent) => {
+      const c = controls.current;
+      if (!c || e.deltaY === 0) return;
+      const rect = canvas.getBoundingClientRect();
+      if (!e.ctrlKey && rect.top < -1) return;
+      const px = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? rect.height : 1);
+      // ctrlKey marks trackpad pinch, which reports much smaller deltas.
+      const scale = Math.exp(THREE.MathUtils.clamp(px, -150, 150) * (e.ctrlKey ? 0.01 : 0.0015));
+      c.smoothTime = 0.25;
+      const zoomed = zoomAtPoint(c, scale, ...toNdc(canvas, e.clientX, e.clientY));
+      if (zoomed || e.ctrlKey) e.preventDefault();
+      if (zoomed) lastInteraction.current = performance.now();
+    };
+    canvas.addEventListener("wheel", onWheel, { passive: false });
+    return () => canvas.removeEventListener("wheel", onWheel);
+  }, [canvas, immersive]);
+
+  useEffect(() => {
+    const c = controls.current;
+    if (immersive || !c) return;
+    const touches = new Map<number, { x: number; y: number }>();
+    let lastSpread = 0;
+    const pair = () => [...touches.values()] as [{ x: number; y: number }, { x: number; y: number }];
+
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType !== "touch") return;
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touches.size !== 2) return;
+      const [a, b] = pair();
+      lastSpread = Math.hypot(a.x - b.x, a.y - b.y);
+      // Rotation stays off until every finger lifts, otherwise the remaining finger jumps the view.
+      c.touches.one = ACTION.NONE;
+    };
+    const onMove = (e: PointerEvent) => {
+      const p = touches.get(e.pointerId);
+      if (!p) return;
+      p.x = e.clientX;
+      p.y = e.clientY;
+      if (touches.size !== 2) return;
+      const [a, b] = pair();
+      const spread = Math.hypot(a.x - b.x, a.y - b.y);
+      if (lastSpread > 0 && spread > 0) {
+        c.smoothTime = 0.12;
+        zoomAtPoint(c, lastSpread / spread, ...toNdc(canvas, (a.x + b.x) / 2, (a.y + b.y) / 2));
+        lastInteraction.current = performance.now();
+      }
+      lastSpread = spread;
+    };
+    const onUp = (e: PointerEvent) => {
+      if (!touches.delete(e.pointerId)) return;
+      if (touches.size === 0) c.touches.one = ACTION.TOUCH_ROTATE;
+    };
+
+    canvas.addEventListener("pointerdown", onDown);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      canvas.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      c.touches.one = ACTION.TOUCH_ROTATE;
+    };
+  }, [canvas, immersive]);
+
   useEffect(() => {
     const c = controls.current;
     if (!c) return;
     const target = view === "focus" ? FOCUS_TARGET : OVERVIEW_TARGET;
     const dir = view === "focus" ? FOCUS_DIR : OVERVIEW_DIR;
-    const dist = view === "focus" ? focusDistance(aspect, heightPx) : overviewDistance(aspect);
+    const reservedPx = immersive ? IMMERSIVE_RESERVED_PX : UI_RESERVED_PX;
+    const dist = view === "focus" ? focusDistance(aspect, heightPx, reservedPx) : overviewDistance(aspect);
     const pos = target.clone().addScaledVector(dir, dist);
-    const [offsetX, offsetY] = view === "focus" ? [0, 0] : overviewOffset(aspect);
+    const [offsetX, offsetY] = view === "focus" || immersive ? [0, 0] : overviewOffset(aspect);
     c.setFocalOffset(offsetX, offsetY, 0, introDone.current);
 
     if (!introDone.current) {
@@ -108,11 +231,12 @@ function CameraRig({ view, autoRotate, zoom }: Pick<SceneProps, "view" | "autoRo
     c.smoothTime = 0.55;
     c.setLookAt(pos.x, pos.y, pos.z, target.x, target.y, target.z, true);
     lastInteraction.current = performance.now();
-  }, [view, aspect, heightPx]);
+  }, [view, aspect, heightPx, immersive, resetKey]);
 
   useEffect(() => {
-    if (zoom.id === 0) return;
-    controls.current?.dolly(zoom.dir * 0.8, true);
+    if (zoom.id === 0 || !controls.current) return;
+    controls.current.smoothTime = 0.45;
+    controls.current.dolly(zoom.dir * 0.8, true);
     lastInteraction.current = performance.now();
   }, [zoom]);
 
@@ -127,8 +251,8 @@ function CameraRig({ view, autoRotate, zoom }: Pick<SceneProps, "view" | "autoRo
     <CameraControls
       ref={controls}
       makeDefault
-      minDistance={1}
-      maxDistance={12}
+      minDistance={immersive ? 0.2 : 1}
+      maxDistance={immersive ? 12 : Math.min(12, overviewDistance(aspect) * 1.35)}
       minPolarAngle={0.25}
       maxPolarAngle={Math.PI / 2 - 0.04}
       draggingSmoothTime={0.12}
@@ -162,7 +286,16 @@ function Ready({ onReady }: { onReady?: () => void }) {
   return null;
 }
 
-export default function Scene({ projects, view, autoRotate, zoom, onAction, onReady }: SceneProps) {
+export default function Scene({
+  projects,
+  view,
+  autoRotate,
+  zoom,
+  immersive,
+  resetKey,
+  onAction,
+  onReady,
+}: SceneProps) {
   return (
     <Canvas
       shadows="percentage"
@@ -207,7 +340,7 @@ export default function Scene({ projects, view, autoRotate, zoom, onAction, onRe
 
         <ContactShadows position={[0, -0.165, -0.15]} scale={9} blur={2.6} opacity={0.35} far={1.5} />
         <AutoShadows />
-        <CameraRig view={view} autoRotate={autoRotate} zoom={zoom} />
+        <CameraRig view={view} autoRotate={autoRotate} zoom={zoom} immersive={immersive} resetKey={resetKey} />
         <Ready onReady={onReady} />
       </Suspense>
     </Canvas>
