@@ -34,8 +34,34 @@ body {
 }
 
 .glass {
-  background: rgba(255, 255, 255, 0.62);
-  backdrop-filter: blur(14px) saturate(1.4);
-  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(12px) saturate(1.6);
   border: 1px solid rgba(255, 255, 255, 0.7);
+}
+
+.glass.glass-light {
+  background: rgba(255, 255, 255, 0.4);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.glass-nav {
+  background-color: transparent;
+  border: 1px solid transparent;
+  box-shadow: none;
+  backdrop-filter: blur(0px) saturate(1);
+  transition:
+    background-color 0.35s ease,
+    border-color 0.35s ease,
+    box-shadow 0.35s ease,
+    backdrop-filter 0.35s ease;
+}
+
+.glass-nav[data-scrolled="true"] {
+  background-color: rgba(255, 255, 255, 0.58);
+  border-color: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(13px) saturate(1.8);
+  box-shadow:
+    0 10px 40px rgba(23, 23, 26, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.25);
 }

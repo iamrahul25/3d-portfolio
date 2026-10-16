@@ -12,6 +12,7 @@ export function ProjectThumb({ project, className = "" }: { project: Project; cl
     if (!canvas) return;
     const draw = () => {
       const rect = canvas.getBoundingClientRect();
+      if (rect.width < 40 || rect.height < 40) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.max(1, Math.round(rect.width * dpr));
       canvas.height = Math.max(1, Math.round(rect.height * dpr));

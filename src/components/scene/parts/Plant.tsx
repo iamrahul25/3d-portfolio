@@ -65,11 +65,11 @@ export function Plant({
   return (
     <group position={position} scale={scale}>
       <mesh position={[0, potHeight / 2, 0]}>
-        <cylinderGeometry args={[potRadius, potRadius * 0.78, potHeight, 32]} />
-        <meshStandardMaterial color={potColor} roughness={0.55} />
+        <cylinderGeometry args={[potRadius, potRadius * 0.78, potHeight, 32, 1, true]} />
+        <meshStandardMaterial color={potColor} roughness={0.55} side={THREE.DoubleSide} />
       </mesh>
-      <mesh position={[0, potHeight - 0.005, 0]}>
-        <cylinderGeometry args={[potRadius * 0.93, potRadius * 0.93, 0.01, 32]} />
+      <mesh position={[0, potHeight - 0.012, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[potRadius * 0.96, 32]} />
         <meshStandardMaterial color="#4a3426" roughness={1} />
       </mesh>
       <group ref={group} position={[0, potHeight, 0]}>

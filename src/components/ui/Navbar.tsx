@@ -31,9 +31,8 @@ export function Navbar() {
       className="fixed inset-x-0 top-0 z-50 px-4 pt-4 sm:px-6"
     >
       <nav
-        className={`mx-auto flex max-w-6xl items-center justify-between rounded-2xl px-4 py-3 transition-all duration-300 sm:px-6 ${
-          scrolled ? "glass shadow-lg shadow-black/5" : "bg-transparent"
-        }`}
+        data-scrolled={scrolled}
+        className="glass-nav mx-auto flex max-w-6xl items-center justify-between rounded-2xl px-4 py-3 sm:px-6"
       >
         <Link href="/" className="text-xl font-extrabold tracking-tight">
           {profile.initials}
@@ -62,7 +61,7 @@ export function Navbar() {
           aria-label="Toggle menu"
           aria-expanded={open}
           onClick={() => setOpen((o) => !o)}
-          className="glass flex h-10 w-10 flex-col items-center justify-center gap-1.5 rounded-xl md:hidden"
+          className="flex h-10 w-10 flex-col items-center justify-center gap-1.5 rounded-xl bg-white/50 md:hidden"
         >
           <motion.span animate={open ? { rotate: 45, y: 4 } : { rotate: 0, y: 0 }} className="h-0.5 w-5 bg-ink" />
           <motion.span animate={open ? { rotate: -45, y: -4 } : { rotate: 0, y: 0 }} className="h-0.5 w-5 bg-ink" />
@@ -75,7 +74,8 @@ export function Navbar() {
             initial={{ opacity: 0, y: -10, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.98 }}
-            className="glass mx-auto mt-2 flex max-w-6xl flex-col gap-1 rounded-2xl p-3 shadow-xl md:hidden"
+            data-scrolled="true"
+            className="glass-nav mx-auto mt-2 flex max-w-6xl flex-col gap-1 rounded-2xl p-3 md:hidden"
           >
             {[...LINKS, { label: "Contact", href: "/#contact" }].map((l) => (
               <li key={l.label}>

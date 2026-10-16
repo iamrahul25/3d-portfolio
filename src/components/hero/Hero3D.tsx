@@ -119,7 +119,7 @@ export function Hero3D() {
             transition={{ duration: 0.7, ease, delay: 0.6 }}
             className="pointer-events-none absolute left-4 top-20 z-10 max-w-[19rem] sm:left-8 md:inset-y-0 md:top-0 md:flex md:items-center lg:left-12 lg:max-w-sm"
           >
-            <div className="glass pointer-events-auto rounded-3xl p-4 shadow-xl shadow-black/5 sm:p-5 lg:p-6">
+            <div className="glass glass-light pointer-events-auto rounded-3xl p-4 shadow-xl shadow-black/5 sm:p-5 lg:p-6">
               <p className="text-sm font-medium text-muted">Hey, I&apos;m</p>
               <h1 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl lg:text-4xl">{profile.name}</h1>
               <p className="mt-1 font-medium text-ink/70">{profile.role}</p>
