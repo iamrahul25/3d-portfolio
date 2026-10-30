@@ -1,5 +1,6 @@
 "use client";
 
+import { TiltCard } from "@/components/ui/TiltCard";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
@@ -84,12 +85,13 @@ export function ProjectsSection({ title = "Selected work" }: { title?: string })
               transition={{ duration: 0.45, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] }}
             >
               <Link href={`/projects/${p.slug}`} className="group block">
-                <motion.article
-                  whileHover={{ y: -6 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 22 }}
-                  className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/5 transition-shadow group-hover:shadow-xl"
-                >
-                  <ProjectThumb project={p} className="aspect-[4/3]" />
+                <TiltCard className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/5 transition-shadow duration-300 group-hover:shadow-[0_24px_60px_-20px_rgba(245,180,0,0.45)] group-hover:ring-accent/40">
+                  <div className="overflow-hidden">
+                    <ProjectThumb
+                      project={p}
+                      className="aspect-[4/3] transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+                    />
+                  </div>
                   <div className="p-5">
                     <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted">
                       <span>{categoryLabels[p.category]}</span>
@@ -102,7 +104,7 @@ export function ProjectsSection({ title = "Selected work" }: { title?: string })
                       <span className="transition-transform group-hover:translate-x-1">→</span>
                     </span>
                   </div>
-                </motion.article>
+                </TiltCard>
               </Link>
             </motion.div>
           ))}
