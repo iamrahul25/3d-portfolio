@@ -1,6 +1,8 @@
 "use client";
 
-import { motion } from "motion/react";
+import { motion, useReducedMotion, type Variants } from "motion/react";
+
+const EASE = [0.22, 1, 0.36, 1] as const;
 
 export function Reveal({
   children,
@@ -11,15 +13,70 @@ export function Reveal({
   delay?: number;
   className?: string;
 }) {
+  const reduce = useReducedMotion();
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y: 28 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      initial={reduce ? false : { opacity: 0, y: 28, filter: "blur(6px)" }}
+      whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
       viewport={{ once: true, margin: "-80px" }}
-      transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay }}
+      transition={{ duration: 0.75, ease: EASE, delay }}
     >
       {children}
     </motion.div>
+  );
+}
+
+const group: Variants = {
+  hidden: {},
+  show: (stagger: number) => ({ transition: { staggerChildren: stagger, delayChildren: 0.05 } }),
+};
+const item: Variants = {
+  hidden: { opacity: 0, y: 18, filter: "blur(4px)" },
+  show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.6, ease: EASE } },
+};
+
+// Children wrapped in <StaggerItem> fade up one after another when the group scrolls into view.
+export function Stagger({
+  children,
+  className,
+  stagger = 0.07,
+  as = "div",
+}: {
+  children: React.ReactNode;
+  className?: string;
+  stagger?: number;
+  as?: "div" | "ul";
+}) {
+  const reduce = useReducedMotion();
+  const Comp = as === "ul" ? motion.ul : motion.div;
+  return (
+    <Comp
+      className={className}
+      variants={group}
+      custom={stagger}
+      initial={reduce ? false : "hidden"}
+      whileInView="show"
+      viewport={{ once: true, margin: "-60px" }}
+    >
+      {children}
+    </Comp>
+  );
+}
+
+export function StaggerItem({
+  children,
+  className,
+  as = "div",
+}: {
+  children: React.ReactNode;
+  className?: string;
+  as?: "div" | "li";
+}) {
+  const Comp = as === "li" ? motion.li : motion.div;
+  return (
+    <Comp className={className} variants={item}>
+      {children}
+    </Comp>
   );
 }

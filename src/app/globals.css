@@ -167,3 +167,36 @@ p {
 [data-theme="dark"] .border-ink\/15 {
   border-color: rgba(255, 255, 255, 0.14);
 }
+
+/* ---------- Sections ---------- */
+/* Text on the yellow accent always stays dark, in both themes. */
+.bg-accent,
+.on-accent {
+  color: #17171a;
+}
+
+.contact-card {
+  background: radial-gradient(120% 140% at 50% 0%, #26262d 0%, #17171a 60%);
+  color: #f7f1e9;
+}
+.contact-card .contact-links {
+  color: rgba(247, 241, 233, 0.7);
+}
+[data-theme="dark"] .contact-card {
+  background: radial-gradient(120% 140% at 50% 0%, #23263a 0%, #151722 65%);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 30px 80px -30px rgba(245, 180, 0, 0.25);
+}
+
+[data-theme="dark"] .about-section {
+  background-color: #12141c;
+}
+[data-theme="dark"] .skill-card {
+  background-color: #191c27;
+  --tw-ring-color: rgba(255, 255, 255, 0.07);
+}
+[data-theme="dark"] .chip {
+  background-color: rgba(255, 255, 255, 0.07);
+}
+[data-theme="dark"] .pill {
+  background-color: #191c27;
+}
