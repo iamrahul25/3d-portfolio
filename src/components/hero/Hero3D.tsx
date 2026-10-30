@@ -286,7 +286,7 @@ export function Hero3D() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.25 }}
-                className="text-center text-xs font-medium text-ink/55"
+                className="mx-auto w-fit rounded-full bg-cream/70 px-3 py-1 text-center text-[11px] font-medium text-ink/70 backdrop-blur-md sm:bg-transparent sm:px-0 sm:py-0 sm:text-xs sm:text-ink/55 sm:backdrop-blur-none"
               >
                 {view === "focus" ? (
                   <>
