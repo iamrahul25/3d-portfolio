@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import * as THREE from "three";
 import { useFrame, type ThreeEvent } from "@react-three/fiber";
 import { Instance, Instances, RoundedBox } from "@react-three/drei";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
@@ -15,6 +16,7 @@ import {
   drawWallpaper,
   type HitRegion,
 } from "./screens/draw";
+import { brushedTexture } from "./materials";
 
 const BEZEL = "#141417";
 const SANS = "Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
@@ -86,18 +88,42 @@ export function MainMonitor({
   };
 
   const { width, height } = MAIN_MONITOR;
+  const brushed = brushedTexture();
+  const cableGeo = useMemo(() => {
+    const c = new THREE.CatmullRomCurve3(
+      [[0, -0.36, -0.1], [0.01, -0.42, -0.14], [0.05, -0.475, -0.24], [0.12, -0.479, -0.32]].map((p) => new THREE.Vector3(...p)),
+    );
+    return new THREE.TubeGeometry(c, 32, 0.005, 8, false);
+  }, []);
 
   return (
     <group position={MAIN_MONITOR.position}>
       <group rotation={[MAIN_MONITOR.tilt, 0, 0]}>
-        <RoundedBox args={[width + 0.06, height + 0.06, 0.035]} radius={0.012} smoothness={4}>
-          <meshStandardMaterial color={BEZEL} roughness={0.35} metalness={0.2} />
+        {/* thin front frame with slightly taller chin */}
+        <RoundedBox args={[width + 0.03, height + 0.05, 0.022]} radius={0.008} smoothness={4} position={[0, -0.01, 0.006]} castShadow>
+          <meshPhysicalMaterial color={BEZEL} roughness={0.42} metalness={0.15} clearcoat={0.4} clearcoatRoughness={0.3} />
         </RoundedBox>
-        <RoundedBox args={[width * 0.7, height * 0.6, 0.05]} radius={0.02} position={[0, 0, -0.035]}>
-          <meshStandardMaterial color="#1f1f24" roughness={0.5} />
+        {/* tapered rear housing */}
+        <RoundedBox args={[width + 0.02, height + 0.03, 0.02]} radius={0.009} smoothness={4} position={[0, -0.005, -0.012]} castShadow>
+          <meshStandardMaterial color="#d9dbe0" metalness={0.7} roughness={0.38} roughnessMap={brushed} />
         </RoundedBox>
+        <RoundedBox args={[width * 0.62, height * 0.55, 0.04]} radius={0.018} smoothness={4} position={[0, 0.0, -0.035]} castShadow>
+          <meshStandardMaterial color="#d2d4da" metalness={0.7} roughness={0.4} roughnessMap={brushed} />
+        </RoundedBox>
+        {/* vent slots */}
+        {Array.from({ length: 14 }, (_, i) => (
+          <mesh key={i} position={[-0.26 + i * 0.04, height * 0.22, -0.0555]}>
+            <boxGeometry args={[0.022, 0.004, 0.002]} />
+            <meshStandardMaterial color="#5a5c63" roughness={0.6} />
+          </mesh>
+        ))}
+        {/* power LED on chin */}
+        <mesh position={[width / 2 - 0.04, -height / 2 - 0.022, 0.0175]}>
+          <circleGeometry args={[0.003, 12]} />
+          <meshBasicMaterial color="#9fffcf" toneMapped={false} />
+        </mesh>
         <mesh
-          position={[0, 0, 0.0185]}
+          position={[0, 0, 0.0175]}
           onPointerMove={onMove}
           onPointerOut={(e) => {
             setHovered(null);
@@ -109,12 +135,19 @@ export function MainMonitor({
           <meshBasicMaterial map={surface.texture} toneMapped={false} />
         </mesh>
       </group>
-      <mesh position={[0, -0.3, -0.075]}>
-        <boxGeometry args={[0.07, 0.38, 0.03]} />
-        <meshStandardMaterial color="#2a2a30" roughness={0.3} metalness={0.6} />
+      {/* aluminium neck with cable cut-out */}
+      <RoundedBox args={[0.085, 0.42, 0.022]} radius={0.008} smoothness={3} position={[0, -0.27, -0.085]} rotation-x={-0.06} castShadow>
+        <meshStandardMaterial color="#cfd1d6" metalness={0.85} roughness={0.3} roughnessMap={brushed} />
+      </RoundedBox>
+      <RoundedBox args={[0.04, 0.05, 0.026]} radius={0.01} position={[0, -0.36, -0.087]}>
+        <meshStandardMaterial color="#1a1a1e" roughness={0.8} />
+      </RoundedBox>
+      <mesh geometry={cableGeo} castShadow>
+        <meshStandardMaterial color="#151518" roughness={0.45} />
       </mesh>
-      <RoundedBox args={[0.34, 0.012, 0.2]} radius={0.005} position={[0, -0.479, -0.05]}>
-        <meshStandardMaterial color="#2a2a30" roughness={0.3} metalness={0.6} />
+      {/* foot */}
+      <RoundedBox args={[0.3, 0.01, 0.22]} radius={0.0045} smoothness={3} position={[0, -0.479, -0.06]} castShadow receiveShadow>
+        <meshStandardMaterial color="#cfd1d6" metalness={0.85} roughness={0.28} roughnessMap={brushed} />
       </RoundedBox>
     </group>
   );
@@ -152,22 +185,30 @@ export function CodeMonitor({
     surface.paint((ctx) => drawCodeScreen(ctx, CODE_W, CODE_H, s.chars, MONO, cursor));
   });
 
+  const brushed = brushedTexture();
   const w = 0.4;
   const h = w * (CODE_H / CODE_W);
 
   return (
     <group position={position} rotation={rotation}>
-      <RoundedBox args={[w + 0.04, h + 0.04, 0.03]} radius={0.01}>
-        <meshStandardMaterial color={BEZEL} roughness={0.35} metalness={0.2} />
+      <RoundedBox args={[w + 0.025, h + 0.025, 0.02]} radius={0.007} smoothness={4} position={[0, 0, 0.005]} castShadow>
+        <meshPhysicalMaterial color={BEZEL} roughness={0.42} metalness={0.15} clearcoat={0.4} clearcoatRoughness={0.3} />
+      </RoundedBox>
+      <RoundedBox args={[w + 0.015, h + 0.015, 0.02]} radius={0.008} smoothness={4} position={[0, 0, -0.012]} castShadow>
+        <meshStandardMaterial color="#d9dbe0" metalness={0.7} roughness={0.38} roughnessMap={brushed} />
       </RoundedBox>
       <mesh position={[0, 0, 0.0155]}>
         <planeGeometry args={[w, h]} />
         <meshBasicMaterial map={surface.texture} toneMapped={false} />
       </mesh>
-      <mesh position={[0, -h / 2 - 0.02, -0.03]}>
-        <boxGeometry args={[0.05, 0.08, 0.025]} />
-        <meshStandardMaterial color="#2a2a30" metalness={0.6} roughness={0.3} />
+      {/* pivot mount + short neck down to the riser */}
+      <mesh position={[0, 0, -0.03]} rotation-x={Math.PI / 2}>
+        <cylinderGeometry args={[0.035, 0.035, 0.018, 24]} />
+        <meshStandardMaterial color="#2a2a30" metalness={0.6} roughness={0.35} />
       </mesh>
+      <RoundedBox args={[0.05, h / 2 + 0.02, 0.018]} radius={0.006} position={[0, -h / 4 - 0.01, -0.045]} castShadow>
+        <meshStandardMaterial color="#cfd1d6" metalness={0.85} roughness={0.3} roughnessMap={brushed} />
+      </RoundedBox>
     </group>
   );
 }
