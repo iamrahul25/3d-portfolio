@@ -134,7 +134,7 @@ export function meshWeaveAlpha() {
 export function corkTexture(seed = 13) {
   return make(`cork-${seed}`, 512, (g, s) => {
     const r = rng(seed);
-    g.fillStyle = "#c98e55";
+    g.fillStyle = "#c39468";
     g.fillRect(0, 0, s, s);
     for (let i = 0; i < 9000; i++) {
       const x = r() * s, y = r() * s, rad = 0.6 + r() * 2.2;

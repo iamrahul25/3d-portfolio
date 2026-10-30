@@ -220,7 +220,7 @@ function Pegboard() {
       {/* cork panel */}
       <mesh castShadow receiveShadow>
         <boxGeometry args={[W - F, H - F, 0.018]} />
-        <meshStandardMaterial color="#f0d2ad" map={cork} bumpMap={cork} bumpScale={1.2} roughness={0.95} />
+        <meshStandardMaterial color="#e6d3bd" map={cork} bumpMap={cork} bumpScale={1.2} roughness={0.95} />
       </mesh>
       {/* wooden frame */}
       {[
