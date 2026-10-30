@@ -404,11 +404,30 @@ function Rug() {
 }
 
 export function Room() {
+  const floor = useMemo(() => {
+    const t = floorTexture().clone();
+    t.repeat.set(2.6, 2.6);
+    t.needsUpdate = true;
+    return t;
+  }, []);
   return (
     <group>
-      <RoundedBox args={[5.4, 0.16, 4.2]} radius={0.05} smoothness={4} position={[0, -0.08, -0.15]}>
-        <meshStandardMaterial color="#efe5d8" roughness={0.9} />
+      <RoundedBox args={[5.4, 0.16, 4.2]} radius={0.05} smoothness={4} position={[0, -0.08, -0.15]} receiveShadow>
+        <meshStandardMaterial color="#e3d6c4" roughness={0.9} />
       </RoundedBox>
+      {/* light oak floorboards with a soft satin finish */}
+      <mesh position={[0, 0.0005, -0.15]} rotation-x={-Math.PI / 2} receiveShadow>
+        <planeGeometry args={[5.3, 4.1]} />
+        <meshPhysicalMaterial
+          color="#f6ece0"
+          map={floor}
+          bumpMap={floor}
+          bumpScale={0.4}
+          roughness={0.55}
+          clearcoat={0.35}
+          clearcoatRoughness={0.4}
+        />
+      </mesh>
 
       <Rug />
 
