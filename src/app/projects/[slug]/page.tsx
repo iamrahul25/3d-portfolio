@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
+import { Suspense, ViewTransition } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { categoryLabels, getProject, projects } from "@/data/portfolio";
@@ -68,7 +68,12 @@ async function ProjectContent({ params }: { params: PageProps<"/projects/[slug]"
       </Reveal>
 
       <Reveal delay={0.1}>
-        <ProjectThumb project={project} className="mt-10 aspect-[16/9] rounded-[2rem] shadow-xl shadow-black/5 ring-1 ring-black/5" />
+        <ViewTransition name={`thumb-${project.slug}`} share="morph" default="none">
+          <ProjectThumb
+            project={project}
+            className="mt-10 aspect-[16/9] rounded-[2rem] shadow-xl shadow-black/5 ring-1 ring-black/5"
+          />
+        </ViewTransition>
       </Reveal>
 
       <div className="mt-14 grid gap-12 md:grid-cols-[1.4fr_1fr]">

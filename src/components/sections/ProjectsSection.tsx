@@ -1,5 +1,6 @@
 "use client";
 
+import { ViewTransition } from "react";
 import { TiltCard } from "@/components/ui/TiltCard";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -95,10 +96,12 @@ export function ProjectsSection({
               <Link href={`/projects/${p.slug}`} className="group block">
                 <TiltCard className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/5 transition-shadow duration-300 group-hover:shadow-[0_24px_60px_-20px_rgba(245,180,0,0.45)] group-hover:ring-accent/40">
                   <div className="overflow-hidden">
-                    <ProjectThumb
-                      project={p}
-                      className="aspect-[4/3] transition-transform duration-700 ease-out group-hover:scale-[1.04]"
-                    />
+                    <ViewTransition name={`thumb-${p.slug}`} share="morph" default="none">
+                      <ProjectThumb
+                        project={p}
+                        className="aspect-[4/3] transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+                      />
+                    </ViewTransition>
                   </div>
                   <div className="p-5">
                     <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted">

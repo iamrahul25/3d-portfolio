@@ -1,15 +1,11 @@
-"use client";
+import { ViewTransition } from "react";
 
-import { motion } from "motion/react";
-
+// Route changes run as React transitions, so this cross-fades/slides whole pages via the
+// browser View Transitions API (no-op where unsupported). Shared thumbnails morph on top.
 export default function Template({ children }: { children: React.ReactNode }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-    >
+    <ViewTransition enter="page-in" exit="page-out" default="none">
       {children}
-    </motion.div>
+    </ViewTransition>
   );
 }
