@@ -72,25 +72,25 @@ export function Lamp({ position }: { position: [number, number, number] }) {
       </mesh>
       {/* base knuckle */}
       <mesh position={[0, 0.04, 0]} rotation-x={Math.PI / 2}>
-        <cylinderGeometry args={[0.016, 0.016, 0.03, 20]} />
+        <cylinderGeometry args={[0.017, 0.017, 0.036, 20]} />
         <meshStandardMaterial color={BRASS} metalness={0.9} roughness={0.25} />
       </mesh>
       {/* twin parallel arms */}
-      {[-0.008, 0.008].map((d) => (
+      {[-0.0105, 0.0105].map((d) => (
         <group key={d}>
-          <Limb from={off(base, d)} to={off(elbow, d)} radius={0.0055} color={BLACK} roughness={0.3} />
-          <Limb from={off(elbow, d)} to={off(head, d)} radius={0.0055} color={BLACK} roughness={0.3} />
+          <Limb from={off(base, d)} to={off(elbow, d)} radius={0.0078} color={BLACK} roughness={0.3} />
+          <Limb from={off(elbow, d)} to={off(head, d)} radius={0.0078} color={BLACK} roughness={0.3} />
         </group>
       ))}
       <mesh geometry={spring} position={[0.03, 0.12, 0.022]} rotation-z={-0.08}>
         <meshStandardMaterial color="#9a9ca3" metalness={1} roughness={0.3} />
       </mesh>
       <mesh position={elbow} rotation-x={Math.PI / 2}>
-        <cylinderGeometry args={[0.014, 0.014, 0.03, 20]} />
+        <cylinderGeometry args={[0.015, 0.015, 0.036, 20]} />
         <meshStandardMaterial color={BRASS} metalness={0.9} roughness={0.25} />
       </mesh>
       <mesh position={head} rotation-x={Math.PI / 2}>
-        <cylinderGeometry args={[0.012, 0.012, 0.03, 20]} />
+        <cylinderGeometry args={[0.013, 0.013, 0.036, 20]} />
         <meshStandardMaterial color={BRASS} metalness={0.9} roughness={0.25} />
       </mesh>
       <group position={head} rotation={[-0.25, 0, 0.75]}>
