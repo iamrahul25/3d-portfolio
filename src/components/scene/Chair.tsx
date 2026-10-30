@@ -25,6 +25,8 @@ export function Chair({
   const weave = useMemo(() => {
     const t = meshWeaveAlpha().clone();
     t.repeat.set(16, 22);
+    t.anisotropy = 16;
+    t.minFilter = THREE.LinearMipmapLinearFilter;
     t.needsUpdate = true;
     return t;
   }, []);
@@ -112,7 +114,8 @@ export function Chair({
             color="#5b5f6b"
             roughness={0.75}
             alphaMap={weave}
-            alphaTest={0.4}
+            transparent
+            depthWrite={false}
             side={THREE.DoubleSide}
           />
         </mesh>

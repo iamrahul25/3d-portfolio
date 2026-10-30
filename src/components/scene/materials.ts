@@ -115,13 +115,17 @@ export function brushedTexture(seed = 5) {
 /** Woven office-chair mesh as an alpha map: white = solid strand, black = hole. */
 export function meshWeaveAlpha() {
   return make("weave", 128, (g, s) => {
-    g.fillStyle = "#000";
+    // Soft-edged strands (grey falloff) so mipmaps average to an even translucency
+    // instead of aliasing into moiré at a distance.
+    g.fillStyle = "#1a1a1a";
     g.fillRect(0, 0, s, s);
-    g.fillStyle = "#fff";
+    g.filter = "blur(1px)";
+    g.fillStyle = "#e6e6e6";
     const step = 8;
     for (let i = 0; i < s; i += step) {
       g.fillRect(i, 0, 3, s);
       g.fillRect(0, i, s, 3);
     }
+    g.filter = "none";
   }, false);
 }
