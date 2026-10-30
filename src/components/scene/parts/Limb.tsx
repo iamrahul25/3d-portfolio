@@ -14,6 +14,7 @@ export function Limb({
   color,
   scale = [1, 1, 1],
   roughness = 0.8,
+  children,
 }: {
   from: Vec3;
   to: Vec3;
@@ -21,6 +22,8 @@ export function Limb({
   color: string;
   scale?: Vec3;
   roughness?: number;
+  /** Optional custom material element; defaults to a plain standard material. */
+  children?: React.ReactNode;
 }) {
   const { position, quaternion, length } = useMemo(() => {
     const a = new THREE.Vector3(...from);
@@ -33,9 +36,9 @@ export function Limb({
   }, [from, to]);
 
   return (
-    <mesh position={position} quaternion={quaternion} scale={scale}>
+    <mesh position={position} quaternion={quaternion} scale={scale} castShadow>
       <capsuleGeometry args={[radius, Math.max(length, 0.001), 6, 16]} />
-      <meshStandardMaterial color={color} roughness={roughness} />
+      {children ?? <meshStandardMaterial color={color} roughness={roughness} />}
     </mesh>
   );
 }
