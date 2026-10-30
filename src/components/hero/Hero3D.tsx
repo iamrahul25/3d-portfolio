@@ -206,15 +206,15 @@ export function Hero3D() {
               transition={{ duration: 0.7, ease, delay: 0.6 }}
               className="pointer-events-none absolute left-4 top-20 z-10 max-w-[19rem] sm:left-8 md:inset-y-0 md:top-0 md:flex md:items-center lg:left-12 lg:max-w-sm"
             >
-              <div className="glass glass-light pointer-events-auto rounded-3xl p-5 shadow-xl shadow-black/5 sm:p-6 lg:p-7">
-                <div className="flex items-center gap-2">
+              <div className="hero-card glass glass-light pointer-events-auto rounded-3xl p-5 shadow-xl shadow-black/5 sm:p-6 lg:p-7">
+                <div className="hero-badge flex items-center gap-2">
                   <span className="relative flex h-2 w-2">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
                   </span>
                   <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">Available for work</p>
                 </div>
-                <p className="mt-4 text-sm font-medium text-muted">Hey, I&apos;m</p>
+                <p className="hero-hey mt-4 text-sm font-medium text-muted">Hey, I&apos;m</p>
                 <h1 className="text-3xl leading-[1.05] font-extrabold tracking-[-0.03em] text-ink sm:text-4xl lg:text-[2.75rem]">
                   {profile.name}
                 </h1>
@@ -224,7 +224,7 @@ export function Hero3D() {
                 <p className="mt-3 hidden max-w-[22rem] text-sm leading-relaxed text-ink/70 [@media(min-height:640px)]:sm:block">
                   {profile.intro}
                 </p>
-                <div className="mt-5 flex flex-wrap items-center gap-2">
+                <div className="hero-actions mt-5 flex flex-wrap items-center gap-2">
                   <button
                     onClick={() => setView("focus")}
                     className="group rounded-full bg-accent px-4 py-2.5 text-sm font-semibold shadow-md shadow-accent/30 transition hover:-translate-y-0.5 hover:bg-accent-strong hover:shadow-lg active:translate-y-0 lg:px-5"
@@ -240,7 +240,7 @@ export function Hero3D() {
                 </div>
                 <a
                   href="#work"
-                  className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-ink/60 underline-offset-4 transition hover:text-ink hover:underline"
+                  className="hero-browse mt-3 inline-flex items-center gap-1 text-xs font-semibold text-ink/60 underline-offset-4 transition hover:text-ink hover:underline"
                 >
                   Browse all work ↓
                 </a>

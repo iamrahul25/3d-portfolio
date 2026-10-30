@@ -203,3 +203,26 @@ p {
 [data-theme="dark"] .bg-sand {
   background-color: var(--sand);
 }
+
+/* Compact hero card for short phones (e.g. iPhone SE, landscape-ish browsers with toolbars). */
+@media (max-width: 639px) and (max-height: 720px) {
+  .hero-card {
+    padding: 0.875rem 1rem;
+    border-radius: 1.25rem;
+  }
+  .hero-card .hero-hey,
+  .hero-card .hero-browse {
+    display: none;
+  }
+  .hero-card h1 {
+    margin-top: 0.5rem;
+    font-size: 1.6rem;
+  }
+  .hero-card .hero-actions {
+    margin-top: 0.75rem;
+  }
+  .hero-card .hero-actions > * {
+    padding: 0.45rem 0.9rem;
+    font-size: 0.8rem;
+  }
+}
