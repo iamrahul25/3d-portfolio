@@ -9,7 +9,10 @@ export const metadata: Metadata = {
 export default function ProjectsPage() {
   return (
     <main className="pt-12">
-      <ProjectsSection title="All projects" />
+      <ProjectsSection
+        title="All projects"
+        subtitle="Every app, website and game I've designed and built. Filter by type, or open one for the full case study."
+      />
     </main>
   );
 }

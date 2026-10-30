@@ -46,3 +46,7 @@ __pycache__/
 
 .vercel
 .env*
+
+# local dev artefacts
+dev.log
+screenshot.png

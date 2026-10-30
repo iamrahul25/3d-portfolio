@@ -24,7 +24,16 @@ const HASH_TO_FILTER: Record<string, Filter> = {
   "#games": "game",
 };
 
-export function ProjectsSection({ title = "Selected work" }: { title?: string }) {
+const DEFAULT_SUBTITLE =
+  "Apps, websites and experiments I've designed and built. Each one is also on the monitor in the 3D workspace above.";
+
+export function ProjectsSection({
+  title = "Selected work",
+  subtitle = DEFAULT_SUBTITLE,
+}: {
+  title?: string;
+  subtitle?: string;
+}) {
   const [filter, setFilter] = useState<Filter>("all");
   const sectionRef = useRef<HTMLElement>(null);
 
@@ -49,8 +58,7 @@ export function ProjectsSection({ title = "Selected work" }: { title?: string })
           <p className="text-sm font-semibold uppercase tracking-widest text-accent-strong">Projects</p>
           <h2 className="mt-2 text-4xl font-extrabold tracking-tight sm:text-5xl">{title}</h2>
           <p className="mt-3 max-w-lg text-muted">
-            Apps, websites and experiments I&apos;ve designed and built. Each one is also on the monitor in the 3D
-            workspace above.
+            {subtitle}
           </p>
         </div>
         <div className="flex gap-1 self-start rounded-full bg-sand p-1 md:self-auto">
