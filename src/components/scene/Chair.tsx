@@ -24,7 +24,7 @@ export function Chair({
   }, []);
   const weave = useMemo(() => {
     const t = meshWeaveAlpha().clone();
-    t.repeat.set(26, 34);
+    t.repeat.set(16, 22);
     t.needsUpdate = true;
     return t;
   }, []);
@@ -105,16 +105,29 @@ export function Chair({
             {shell}
           </RoundedBox>
         ))}
-        <mesh>
-          <planeGeometry args={[0.44, 0.58]} />
+        {/* curved mesh panel (cylinder segment) so the back wraps around the sitter */}
+        <mesh position={[0, 0, 0.42]} rotation={[0, Math.PI, 0]}>
+          <cylinderGeometry args={[0.45, 0.45, 0.58, 32, 1, true, -0.5, 1.0]} />
           <meshStandardMaterial
-            color="#1d1d22"
-            roughness={0.8}
+            color="#5b5f6b"
+            roughness={0.75}
             alphaMap={weave}
             alphaTest={0.4}
             side={THREE.DoubleSide}
           />
         </mesh>
+        {/* headrest */}
+        <group position={[0, 0.4, 0.01]}>
+          <RoundedBox args={[0.3, 0.12, 0.05]} radius={0.022} smoothness={4} castShadow>
+            <meshStandardMaterial color="#ffffff" map={seatFabric} roughness={0.9} />
+          </RoundedBox>
+          {[-1, 1].map((s) => (
+            <mesh key={s} position={[s * 0.08, -0.07, 0.01]}>
+              <cylinderGeometry args={[0.008, 0.008, 0.08, 10]} />
+              {chrome}
+            </mesh>
+          ))}
+        </group>
         {/* lumbar pad */}
         <RoundedBox args={[0.36, 0.08, 0.025]} radius={0.012} position={[0, -0.17, -0.012]} castShadow>
           <meshStandardMaterial color="#2a2b31" roughness={0.6} />
