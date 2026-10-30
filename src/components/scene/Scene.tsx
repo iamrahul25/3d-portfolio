@@ -298,22 +298,24 @@ export default function Scene({
 }: SceneProps) {
   return (
     <Canvas
-      shadows="percentage"
+      shadows="soft"
       dpr={[1, 1.75]}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       camera={{ fov: FOV, near: 0.05, far: 60, position: [6, 5, 8] }}
       onCreated={({ gl }) => {
-        gl.toneMapping = THREE.ACESFilmicToneMapping;
-        gl.toneMappingExposure = 1.05;
+        gl.toneMapping = THREE.AgXToneMapping;
+        gl.toneMappingExposure = 1.15;
       }}
     >
       <Suspense fallback={null}>
         <hemisphereLight args={["#fff4e6", "#cdb9a3", 0.75]} />
-        <ambientLight intensity={0.2} />
+        <ambientLight intensity={0.15} />
+        {/* cool rim light from behind-left to separate silhouettes from the walls */}
+        <directionalLight position={[-4, 3.5, -3]} intensity={0.55} color="#cfe0ff" />
         <directionalLight
           position={[3.5, 6, 3.2]}
-          intensity={1.7}
-          color="#fff0dc"
+          intensity={2.1}
+          color="#ffe6c4"
           castShadow
           shadow-mapSize={[2048, 2048]}
           shadow-bias={-0.0004}
@@ -338,7 +340,7 @@ export default function Scene({
         <Chair position={[-0.1, 0, -0.55]} />
         <Developer position={[-0.1, 0, 0]} />
 
-        <ContactShadows position={[0, -0.165, -0.15]} scale={9} blur={2.6} opacity={0.35} far={1.5} />
+        <ContactShadows position={[0, -0.165, -0.15]} scale={9} blur={2.2} opacity={0.42} far={1.5} />
         <AutoShadows />
         <CameraRig view={view} autoRotate={autoRotate} zoom={zoom} immersive={immersive} resetKey={resetKey} />
         <Ready onReady={onReady} />
