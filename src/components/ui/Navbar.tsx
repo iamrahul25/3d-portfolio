@@ -35,7 +35,7 @@ export function Navbar() {
         data-scrolled={scrolled}
         className="glass-nav mx-auto flex max-w-6xl items-center justify-between rounded-2xl px-4 py-3 sm:px-6"
       >
-        <Link href="/" className="text-xl font-extrabold tracking-tight">
+        <Link href="/" className="text-xl font-extrabold tracking-tight text-ink">
           {profile.initials}
         </Link>
 

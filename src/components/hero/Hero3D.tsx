@@ -188,7 +188,7 @@ export function Hero3D() {
             >
               <div className="glass glass-light pointer-events-auto rounded-3xl p-4 shadow-xl shadow-black/5 sm:p-5 lg:p-6">
                 <p className="text-sm font-medium text-muted">Hey, I&apos;m</p>
-                <h1 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl lg:text-4xl">{profile.name}</h1>
+                <h1 className="mt-1 text-2xl text-ink font-extrabold tracking-tight sm:text-3xl lg:text-4xl">{profile.name}</h1>
                 <p className="mt-1 font-medium text-ink/70">{profile.role}</p>
                 <p className="mt-3 hidden text-sm leading-relaxed text-ink/70 [@media(min-height:640px)]:sm:block">
                   {profile.intro}
