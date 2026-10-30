@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, type ThreeEvent } from "@react-three/fiber";
-import { RoundedBox } from "@react-three/drei";
+import { Instance, Instances, RoundedBox } from "@react-three/drei";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import type { Project } from "@/data/portfolio";
 import { getFontFamily, useCanvasTexture } from "./useCanvasTexture";
 import {
@@ -178,32 +179,86 @@ export function Laptop({
   position: [number, number, number];
   rotation: [number, number, number];
 }) {
-  const surface = useCanvasTexture(800, 500);
+  const surface = useCanvasTexture(1000, 620);
 
   useEffect(() => {
-    surface.paint((ctx) => drawWallpaper(ctx, 800, 500));
+    surface.paint((ctx) => drawWallpaper(ctx, 1000, 620));
   }, [surface]);
+
+  const keys = useMemo(() => {
+    const list: { x: number; z: number; w: number }[] = [];
+    const rows = [14, 14, 13, 12];
+    rows.forEach((n, r) => {
+      const pitch = 0.0205;
+      const off = (-(n - 1) * pitch) / 2;
+      for (let c = 0; c < n; c++) list.push({ x: off + c * pitch, z: -0.085 + r * 0.021, w: 0.0172 });
+    });
+    list.push({ x: 0, z: -0.085 + 4 * 0.021, w: 0.1 }); // space bar
+    return list;
+  }, []);
+  const keycap = useMemo(() => new RoundedBoxGeometry(1, 0.0016, 0.0172, 2, 0.0006), []);
+  const alu = <meshPhysicalMaterial color="#c7cad1" metalness={0.9} roughness={0.32} clearcoat={0.2} clearcoatRoughness={0.4} />;
+  const W = 0.32;
+  const D = 0.222;
 
   return (
     <group position={position} rotation={rotation}>
-      <RoundedBox args={[0.36, 0.014, 0.25]} radius={0.005} position={[0, 0.007, 0]}>
-        <meshStandardMaterial color="#c9ccd2" metalness={0.7} roughness={0.3} />
+      {/* unibody base: thin slab with rounded corners; a slightly smaller top plate gives the chamfered edge */}
+      <RoundedBox args={[W, 0.008, D]} radius={0.0035} smoothness={4} position={[0, 0.004, 0]} castShadow receiveShadow>
+        {alu}
       </RoundedBox>
-      <mesh position={[0, 0.0145, -0.02]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[0.31, 0.13]} />
-        <meshStandardMaterial color="#2b2d33" roughness={0.8} />
+      <RoundedBox args={[W - 0.004, 0.0012, D - 0.004]} radius={0.0006} position={[0, 0.0084, 0]}>
+        <meshPhysicalMaterial color="#d3d6dc" metalness={0.9} roughness={0.22} />
+      </RoundedBox>
+      {/* keyboard well + individual black keys */}
+      <mesh position={[0, 0.0091, -0.042]} rotation-x={-Math.PI / 2}>
+        <planeGeometry args={[0.296, 0.108]} />
+        <meshStandardMaterial color="#202227" roughness={0.9} />
       </mesh>
-      <mesh position={[0, 0.0145, 0.08]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[0.11, 0.06]} />
-        <meshStandardMaterial color="#b7bac1" metalness={0.5} roughness={0.35} />
+      <Instances limit={64} geometry={keycap}>
+        <meshStandardMaterial color="#141519" roughness={0.6} />
+        {keys.map((k, i) => (
+          <Instance key={i} position={[k.x, 0.0098, k.z]} scale={[k.w, 1, 1]} />
+        ))}
+      </Instances>
+      {/* glass trackpad */}
+      <RoundedBox args={[0.12, 0.0006, 0.072]} radius={0.0003} position={[0, 0.0092, 0.064]}>
+        <meshPhysicalMaterial color="#c2c5cc" metalness={0.6} roughness={0.12} clearcoat={1} />
+      </RoundedBox>
+      {/* front lip notch */}
+      <mesh position={[0, 0.006, D / 2 + 0.0001]}>
+        <boxGeometry args={[0.04, 0.003, 0.0006]} />
+        <meshStandardMaterial color="#9da1a8" metalness={0.9} roughness={0.4} />
       </mesh>
-      <group position={[0, 0.014, -0.122]} rotation={[-0.3, 0, 0]}>
-        <RoundedBox args={[0.36, 0.235, 0.008]} radius={0.004} position={[0, 0.1175, 0]}>
-          <meshStandardMaterial color="#c9ccd2" metalness={0.7} roughness={0.3} />
+      {/* hinge barrel */}
+      <mesh position={[0, 0.0085, -D / 2 + 0.002]} rotation-z={Math.PI / 2}>
+        <cylinderGeometry args={[0.0042, 0.0042, W - 0.06, 20]} />
+        <meshStandardMaterial color="#2a2c31" metalness={0.6} roughness={0.4} />
+      </mesh>
+
+      {/* lid */}
+      <group position={[0, 0.0085, -D / 2 + 0.002]} rotation={[-0.3, 0, 0]}>
+        <RoundedBox args={[W, 0.212, 0.005]} radius={0.0025} smoothness={4} position={[0, 0.106, -0.0025]} castShadow>
+          {alu}
         </RoundedBox>
-        <mesh position={[0, 0.1175, 0.0045]}>
-          <planeGeometry args={[0.335, 0.21]} />
+        {/* back logo */}
+        <mesh position={[0, 0.112, -0.0052]} rotation-y={Math.PI}>
+          <circleGeometry args={[0.011, 32]} />
+          <meshPhysicalMaterial color="#e8eaee" metalness={1} roughness={0.08} />
+        </mesh>
+        {/* black glass bezel, then the screen */}
+        <mesh position={[0, 0.106, 0.0001]}>
+          <planeGeometry args={[W - 0.006, 0.206]} />
+          <meshPhysicalMaterial color="#08090b" roughness={0.08} clearcoat={1} />
+        </mesh>
+        <mesh position={[0, 0.108, 0.0004]}>
+          <planeGeometry args={[W - 0.018, 0.19]} />
           <meshBasicMaterial map={surface.texture} toneMapped={false} />
+        </mesh>
+        {/* camera */}
+        <mesh position={[0, 0.2045, 0.0004]}>
+          <circleGeometry args={[0.0014, 12]} />
+          <meshStandardMaterial color="#1d2a3a" roughness={0.1} />
         </mesh>
       </group>
     </group>
