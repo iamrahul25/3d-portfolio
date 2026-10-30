@@ -12,6 +12,7 @@ import {
   PerformanceMonitor,
   Sparkles,
 } from "@react-three/drei";
+import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import * as THREE from "three";
 import type { Project } from "@/data/portfolio";
 import { Room } from "./Room";
@@ -376,6 +377,25 @@ function NightAmbience() {
   );
 }
 
+// Bloom only at night (when the lamp, shelf strip and screens are the light sources) and
+// only on devices that can afford a full-screen pass.
+function NightBloom({ capable }: { capable: boolean }) {
+  const night = useTheme() === "dark";
+  if (!night || !capable) return null;
+  return (
+    <EffectComposer multisampling={0} enableNormalPass={false}>
+      <Bloom mipmapBlur intensity={0.7} luminanceThreshold={0.9} luminanceSmoothing={0.2} radius={0.7} />
+    </EffectComposer>
+  );
+}
+
+function canAffordEffects() {
+  if (typeof window === "undefined") return false;
+  const coarse = window.matchMedia("(pointer: coarse)").matches;
+  const cores = navigator.hardwareConcurrency ?? 4;
+  return !coarse && cores >= 4;
+}
+
 export default function Scene({
   projects,
   view,
@@ -388,6 +408,7 @@ export default function Scene({
 }: SceneProps) {
   // Start at a sensible DPR and step down on slow GPUs instead of dropping frames.
   const [dpr, setDpr] = useState(1.5);
+  const [fx, setFx] = useState(canAffordEffects);
   return (
     <Canvas
       shadows="percentage"
@@ -404,12 +425,17 @@ export default function Scene({
           bounds={() => [45, 60]}
           onIncline={() => setDpr((d) => Math.min(1.75, d + 0.25))}
           onDecline={() => setDpr((d) => Math.max(0.85, d - 0.25))}
+          onChange={({ factor }) => factor < 0.3 && setFx(false)}
           flipflops={3}
-          onFallback={() => setDpr(1)}
+          onFallback={() => {
+            setDpr(1);
+            setFx(false);
+          }}
         />
         <AdaptiveDpr pixelated={false} />
         <Lights />
         <NightAmbience />
+        <NightBloom capable={fx} />
         <Environment resolution={256} frames={1} environmentIntensity={0.45}>
           <Lightformer intensity={2} position={[0, 5, -2]} scale={[10, 5, 1]} rotation-x={Math.PI / 2} color="#fff3e0" />
           <Lightformer intensity={1.2} position={[-5, 1.5, -1]} rotation-y={Math.PI / 2} scale={[10, 3, 1]} color="#ffe9cc" />
