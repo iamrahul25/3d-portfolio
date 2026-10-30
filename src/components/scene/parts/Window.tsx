@@ -15,6 +15,23 @@ const NIGHT_BOTTOM = new THREE.Color("#28305e");
 export function Window({ width = 0.9, height = 1 }: { width?: number; height?: number }) {
   const sky = useRef<THREE.ShaderMaterial>(null);
   const moon = useRef<THREE.MeshBasicMaterial>(null);
+  const halo = useRef<THREE.MeshBasicMaterial>(null);
+  const glow = useRef<THREE.MeshBasicMaterial>(null);
+  const spill = useRef<THREE.PointLight>(null);
+  const glowTex = useMemo(() => {
+    const c = document.createElement("canvas");
+    c.width = c.height = 128;
+    const g = c.getContext("2d")!;
+    const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    grad.addColorStop(0, "rgba(255,255,255,1)");
+    grad.addColorStop(0.35, "rgba(255,255,255,0.45)");
+    grad.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 128, 128);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }, []);
   const uniforms = useMemo(
     () => ({
       uTop: { value: DAY_TOP.clone() },
@@ -29,7 +46,11 @@ export function Window({ width = 0.9, height = 1 }: { width?: number; height?: n
     uniforms.uTop.value.copy(DAY_TOP).lerp(NIGHT_TOP, k);
     uniforms.uBottom.value.copy(DAY_BOTTOM).lerp(NIGHT_BOTTOM, k);
     uniforms.uNight.value = k;
-    if (moon.current) moon.current.opacity = THREE.MathUtils.smoothstep(k, 0.4, 1);
+    const m = THREE.MathUtils.smoothstep(k, 0.4, 1);
+    if (moon.current) moon.current.opacity = m;
+    if (halo.current) halo.current.opacity = 0.55 * m;
+    if (glow.current) glow.current.opacity = 0.2 * k;
+    if (spill.current) spill.current.intensity = 0.9 * k;
   });
 
   const t = 0.04;
@@ -58,6 +79,35 @@ export function Window({ width = 0.9, height = 1 }: { width?: number; height?: n
         <circleGeometry args={[0.07, 32]} />
         <meshBasicMaterial ref={moon} color="#fff4d6" transparent opacity={0} toneMapped={false} />
       </mesh>
+      {/* moon halo */}
+      <mesh position={[width * 0.22, height * 0.25, 0.003]}>
+        <planeGeometry args={[0.42, 0.42]} />
+        <meshBasicMaterial
+          ref={halo}
+          map={glowTex}
+          color="#ffe8b0"
+          transparent
+          opacity={0}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          toneMapped={false}
+        />
+      </mesh>
+      {/* night glow spilling past the frame onto the wall */}
+      <mesh position={[0, 0, 0.03]} renderOrder={3}>
+        <planeGeometry args={[width * 1.25, height * 1.8]} />
+        <meshBasicMaterial
+          ref={glow}
+          map={glowTex}
+          color="#5b74ff"
+          transparent
+          opacity={0}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          toneMapped={false}
+        />
+      </mesh>
+      <pointLight ref={spill} position={[0, -0.1, 0.6]} color="#7d92ff" intensity={0} distance={2.4} decay={1.8} />
       {/* frame */}
       {[
         [0, height / 2 + t / 2, width + t * 2, t],
