@@ -206,3 +206,15 @@ export function floorTexture(seed = 23) {
     }
   });
 }
+
+/** Vertical soft gradient (opaque at the bottom) for fake contact AO strips. */
+export function aoGradient() {
+  return make("ao-grad", 64, (g, s) => {
+    const grad = g.createLinearGradient(0, s, 0, 0);
+    grad.addColorStop(0, "rgba(0,0,0,1)");
+    grad.addColorStop(0.35, "rgba(0,0,0,0.35)");
+    grad.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = grad;
+    g.fillRect(0, 0, s, s);
+  });
+}

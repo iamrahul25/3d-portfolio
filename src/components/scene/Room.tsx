@@ -1,5 +1,5 @@
 "use client";
-import { brushedTexture, corkTexture, floorTexture, plasterTexture, rugTexture, woodTexture } from "./materials";
+import { aoGradient, brushedTexture, corkTexture, floorTexture, plasterTexture, rugTexture, woodTexture } from "./materials";
 
 import { useTheme } from "@/lib/theme";
 import { useMemo, useRef } from "react";
@@ -31,6 +31,13 @@ function FadingWall({
   const n = useMemo(() => new THREE.Vector3(...normal), [normal]);
   const p = useMemo(() => new THREE.Vector3(...position), [position]);
   const tmp = useMemo(() => new THREE.Vector3(), []);
+  const plaster = useMemo(() => {
+    const t = plasterTexture().clone();
+    t.repeat.set(size[0] * 1.5, size[1] * 1.5);
+    t.needsUpdate = true;
+    return t;
+  }, [size]);
+  const ao = aoGradient();
 
   useFrame(({ camera }, delta) => {
     if (!material.current || !group.current) return;
@@ -47,11 +54,28 @@ function FadingWall({
       <group position={position} rotation={rotation}>
         <mesh receiveShadow>
           <planeGeometry args={size} />
-          <meshStandardMaterial ref={material} color={WALL} roughness={0.95} transparent />
+          <meshStandardMaterial
+            ref={material}
+            color={WALL}
+            roughness={0.92}
+            bumpMap={plaster}
+            bumpScale={0.35}
+            roughnessMap={plaster}
+            transparent
+          />
         </mesh>
-        <mesh position={[0, -size[1] / 2 + 0.04, 0.008]}>
-          <boxGeometry args={[size[0], 0.08, 0.016]} />
-          <meshStandardMaterial color="#ebe2d6" roughness={0.8} />
+        {/* soft contact shadow where the wall meets the floor */}
+        <mesh position={[0, -size[1] / 2 + 0.22, 0.002]}>
+          <planeGeometry args={[size[0], 0.44]} />
+          <meshBasicMaterial alphaMap={ao} color="#3a2a1a" transparent opacity={0.12} depthWrite={false} />
+        </mesh>
+        {/* skirting board with a moulded top lip */}
+        <RoundedBox args={[size[0], 0.1, 0.014]} radius={0.004} smoothness={2} position={[0, -size[1] / 2 + 0.05, 0.007]} receiveShadow>
+          <meshStandardMaterial color="#efe7dc" roughness={0.55} />
+        </RoundedBox>
+        <mesh position={[0, -size[1] / 2 + 0.1, 0.012]} rotation-z={Math.PI / 2}>
+          <cylinderGeometry args={[0.006, 0.006, size[0], 10]} />
+          <meshStandardMaterial color="#efe7dc" roughness={0.55} />
         </mesh>
       </group>
       {children}
