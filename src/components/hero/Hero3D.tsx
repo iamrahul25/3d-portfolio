@@ -186,27 +186,44 @@ export function Hero3D() {
               transition={{ duration: 0.7, ease, delay: 0.6 }}
               className="pointer-events-none absolute left-4 top-20 z-10 max-w-[19rem] sm:left-8 md:inset-y-0 md:top-0 md:flex md:items-center lg:left-12 lg:max-w-sm"
             >
-              <div className="glass glass-light pointer-events-auto rounded-3xl p-4 shadow-xl shadow-black/5 sm:p-5 lg:p-6">
-                <p className="text-sm font-medium text-muted">Hey, I&apos;m</p>
-                <h1 className="mt-1 text-2xl text-ink font-extrabold tracking-tight sm:text-3xl lg:text-4xl">{profile.name}</h1>
-                <p className="mt-1 font-medium text-ink/70">{profile.role}</p>
-                <p className="mt-3 hidden text-sm leading-relaxed text-ink/70 [@media(min-height:640px)]:sm:block">
+              <div className="glass glass-light pointer-events-auto rounded-3xl p-5 shadow-xl shadow-black/5 sm:p-6 lg:p-7">
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                  </span>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">Available for work</p>
+                </div>
+                <p className="mt-4 text-sm font-medium text-muted">Hey, I&apos;m</p>
+                <h1 className="text-3xl leading-[1.05] font-extrabold tracking-[-0.03em] text-ink sm:text-4xl lg:text-[2.75rem]">
+                  {profile.name}
+                </h1>
+                <p className="mt-2 font-mono text-xs font-medium uppercase tracking-[0.18em] text-accent-strong">
+                  {profile.role}
+                </p>
+                <p className="mt-3 hidden max-w-[22rem] text-sm leading-relaxed text-ink/70 [@media(min-height:640px)]:sm:block">
                   {profile.intro}
                 </p>
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-5 flex flex-wrap items-center gap-2">
                   <button
                     onClick={() => setView("focus")}
-                    className="rounded-full bg-accent px-4 py-2 text-sm font-semibold shadow-md shadow-accent/30 transition hover:bg-accent-strong lg:px-5 lg:py-2.5"
+                    className="group rounded-full bg-accent px-4 py-2.5 text-sm font-semibold shadow-md shadow-accent/30 transition hover:-translate-y-0.5 hover:bg-accent-strong hover:shadow-lg active:translate-y-0 lg:px-5"
                   >
-                    View Projects →
+                    View Projects <span className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
                   </button>
                   <a
-                    href="#work"
-                    className="rounded-full border border-ink/15 bg-white/60 px-4 py-2 text-sm font-semibold transition hover:bg-white lg:px-5 lg:py-2.5"
+                    href="#contact"
+                    className="rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-cream transition hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 lg:px-5"
                   >
-                    Browse all work
+                    Hire me
                   </a>
                 </div>
+                <a
+                  href="#work"
+                  className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-ink/60 underline-offset-4 transition hover:text-ink hover:underline"
+                >
+                  Browse all work ↓
+                </a>
               </div>
             </motion.div>
           )}
