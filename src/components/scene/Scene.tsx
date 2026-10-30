@@ -20,6 +20,7 @@ import { Desk } from "./Desk";
 import { Chair } from "./Chair";
 import { Developer } from "./Developer";
 import { useTheme } from "@/lib/theme";
+import { nightMix } from "./nightMix";
 import { MAIN_MONITOR, MainMonitor, type ScreenAction } from "./Monitors";
 
 export type View = "overview" | "focus";
@@ -251,6 +252,22 @@ function CameraRig({
     lastInteraction.current = performance.now();
   }, [zoom]);
 
+  // A small camera drift when day/night flips, so the toggle feels like it happens in the room.
+  const theme = useTheme();
+  const prevTheme = useRef(theme);
+  useEffect(() => {
+    if (prevTheme.current === theme) return;
+    prevTheme.current = theme;
+    const c = controls.current;
+    if (!c || view !== "overview" || immersive) return;
+    const dir = theme === "dark" ? 1 : -1;
+    c.smoothTime = 0.9;
+    // Lean in slightly and settle lower at night, back out by day. Small enough to stay inside the room bounds.
+    c.rotate(0, dir * THREE.MathUtils.degToRad(-2.5), true);
+    c.dolly(dir * 0.18, true);
+    lastInteraction.current = performance.now();
+  }, [theme, view, immersive]);
+
   useFrame((_, delta) => {
     const c = controls.current;
     if (!c || !autoRotate || view !== "overview") return;
@@ -315,6 +332,7 @@ function Lights() {
     const goal = night ? 1 : 0;
     t.current = THREE.MathUtils.damp(t.current, goal, 3.5, delta);
     const k = t.current;
+    nightMix.value = k;
     const mix = (p: keyof typeof DAY) => THREE.MathUtils.lerp(DAY[p], NIGHT[p], k);
     if (hemi.current) {
       hemi.current.intensity = mix("hemi");

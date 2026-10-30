@@ -7,6 +7,7 @@ import { Instance, Instances, RoundedBox } from "@react-three/drei";
 import * as THREE from "three";
 import { Plant } from "./parts/Plant";
 import { CatFigurine } from "./parts/CatFigurine";
+import { Window } from "./parts/Window";
 
 const WALL = "#f3ece3";
 const WOOD = "#d8b07a";
@@ -225,6 +226,9 @@ export function Room() {
       >
         <group position={[-2.67, 1.7, -1.1]} rotation={[0, Math.PI / 2, 0]}>
           <WallArt />
+        </group>
+        <group position={[-2.675, 1.65, -0.05]} rotation={[0, Math.PI / 2, 0]}>
+          <Window width={0.85} height={0.95} />
         </group>
       </FadingWall>
       <PCTower position={[1.68, 0, -1.5]} />

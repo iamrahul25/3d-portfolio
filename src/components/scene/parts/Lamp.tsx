@@ -1,6 +1,9 @@
 "use client";
 
+import { useRef } from "react";
+import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { nightMix } from "../nightMix";
 import { Limb } from "./Limb";
 import { useTheme } from "@/lib/theme";
 
@@ -8,6 +11,19 @@ const BLACK = "#16161a";
 
 export function Lamp({ position }: { position: [number, number, number] }) {
   const night = useTheme() === "dark";
+  const bulb = useRef<THREE.MeshStandardMaterial>(null);
+  const light = useRef<THREE.PointLight>(null);
+  // Bulb follows the night blend, with a brief flicker as it "switches on".
+  useFrame(({ clock }) => {
+    const k = nightMix.value;
+    const flicker = k > 0.05 && k < 0.6 ? 0.55 + 0.45 * Math.sign(Math.sin(clock.elapsedTime * 38)) : 1;
+    const on = THREE.MathUtils.lerp(1, 2, k) * flicker;
+    if (bulb.current) bulb.current.emissiveIntensity = 3 * on;
+    if (light.current) {
+      light.current.intensity = 2.2 * on;
+      light.current.distance = THREE.MathUtils.lerp(2.6, 3.5, k);
+    }
+  });
   const base: [number, number, number] = [0, 0.02, 0];
   const elbow: [number, number, number] = [0.04, 0.48, 0.02];
   const head: [number, number, number] = [0.3, 0.66, 0.2];
@@ -44,9 +60,15 @@ export function Lamp({ position }: { position: [number, number, number] }) {
         </mesh>
         <mesh position={[0, -0.07, 0]}>
           <sphereGeometry args={[0.035, 20, 16]} />
-          <meshStandardMaterial color="#fff6d8" emissive="#ffd36b" emissiveIntensity={night ? 6 : 3} toneMapped={false} />
+          <meshStandardMaterial ref={bulb} color="#fff6d8" emissive="#ffd36b" emissiveIntensity={3} toneMapped={false} />
         </mesh>
-        <pointLight position={[0, -0.14, 0]} color="#ffbe55" intensity={night ? 4 : 2.2} distance={night ? 3.5 : 2.6} decay={1.6}
+        <pointLight
+          ref={light}
+          position={[0, -0.14, 0]}
+          color="#ffbe55"
+          intensity={2.2}
+          distance={2.6}
+          decay={1.6}
           castShadow={night}
           shadow-mapSize={[512, 512]}
           shadow-bias={-0.002} />
