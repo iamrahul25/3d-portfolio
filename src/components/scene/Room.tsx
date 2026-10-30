@@ -1,5 +1,5 @@
 "use client";
-import { brushedTexture } from "./materials";
+import { brushedTexture, woodTexture } from "./materials";
 
 import { useTheme } from "@/lib/theme";
 import { useMemo, useRef } from "react";
@@ -73,12 +73,33 @@ function ShelfBooks({ position }: { position: [number, number, number] }) {
   }, []);
   return (
     <group position={position}>
-      {books.map((b, i) => (
-        <mesh key={i} position={[b.x, b.h / 2, 0]}>
-          <boxGeometry args={[b.w, b.h, 0.16]} />
-          <meshStandardMaterial color={b.c} roughness={0.7} />
-        </mesh>
-      ))}
+      {books.map((b, i) => {
+        const last = i === books.length - 1;
+        return (
+          <group key={i} position={[b.x + (last ? 0.03 : 0), 0, 0]} rotation-z={last ? -0.22 : 0}>
+            {/* hard cover */}
+            <RoundedBox args={[b.w, b.h, 0.16]} radius={0.003} smoothness={2} position={[0, b.h / 2, 0]} castShadow>
+              <meshPhysicalMaterial color={b.c} roughness={0.55} clearcoat={0.25} clearcoatRoughness={0.5} />
+            </RoundedBox>
+            {/* page block peeking from the top and fore-edge */}
+            <mesh position={[0, b.h - 0.0025, -0.004]}>
+              <boxGeometry args={[b.w - 0.006, 0.006, 0.15]} />
+              <meshStandardMaterial color="#f1eadb" roughness={0.95} />
+            </mesh>
+            {/* spine bands */}
+            {[0.18, 0.82].map((t) => (
+              <mesh key={t} position={[0, b.h * t, 0.0802]}>
+                <planeGeometry args={[b.w * 0.8, 0.006]} />
+                <meshStandardMaterial color="#c9a45c" metalness={0.8} roughness={0.35} />
+              </mesh>
+            ))}
+            <mesh position={[0, b.h * 0.5, 0.0802]}>
+              <planeGeometry args={[b.w * 0.35, b.h * 0.3]} />
+              <meshStandardMaterial color="#ffffff" transparent opacity={0.18} />
+            </mesh>
+          </group>
+        );
+      })}
     </group>
   );
 }
@@ -86,32 +107,51 @@ function ShelfBooks({ position }: { position: [number, number, number] }) {
 function Shelf() {
   const night = useTheme() === "dark";
   const y = 2.05;
+  const wood = useMemo(() => {
+    const t = woodTexture("#d8b07a", 19).clone();
+    t.repeat.set(2.5, 0.35);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.needsUpdate = true;
+    return t;
+  }, []);
   return (
     <group position={[-0.1, y, -2.08]}>
-      <RoundedBox args={[1.9, 0.04, 0.24]} radius={0.008}>
-        <meshStandardMaterial color={WOOD} roughness={0.55} />
+      <RoundedBox args={[1.9, 0.04, 0.24]} radius={0.008} smoothness={3} castShadow receiveShadow>
+        <meshStandardMaterial color={WOOD} map={wood} bumpMap={wood} bumpScale={0.6} roughness={0.5} />
       </RoundedBox>
       <mesh position={[0, -0.026, 0.08]}>
         <boxGeometry args={[1.82, 0.01, 0.02]} />
         <meshStandardMaterial color="#fff2c9" emissive="#ffc85a" emissiveIntensity={2.5} toneMapped={false} />
       </mesh>
       <pointLight position={[0, -0.15, 0.2]} color="#ffc061" intensity={night ? 3.2 : 1.4} distance={2.2} decay={1.5} />
+      {/* powder-coated steel L-brackets with screws */}
       {[-0.75, 0.75].map((x) => (
-        <mesh key={x} position={[x, -0.06, -0.06]}>
-          <boxGeometry args={[0.03, 0.1, 0.1]} />
-          <meshStandardMaterial color="#1b1b1f" />
-        </mesh>
+        <group key={x} position={[x, 0, 0]}>
+          <RoundedBox args={[0.025, 0.006, 0.2]} radius={0.002} position={[0, -0.023, -0.01]}>
+            <meshStandardMaterial color="#1b1b1f" metalness={0.5} roughness={0.45} />
+          </RoundedBox>
+          <RoundedBox args={[0.025, 0.16, 0.006]} radius={0.002} position={[0, -0.1, -0.11]}>
+            <meshStandardMaterial color="#1b1b1f" metalness={0.5} roughness={0.45} />
+          </RoundedBox>
+          {[-0.06, -0.15].map((sy) => (
+            <mesh key={sy} position={[0, sy, -0.106]} rotation-x={Math.PI / 2}>
+              <cylinderGeometry args={[0.005, 0.005, 0.003, 12]} />
+              <meshStandardMaterial color="#8d8f96" metalness={1} roughness={0.3} />
+            </mesh>
+          ))}
+        </group>
       ))}
-      <ShelfBooks position={[0.15, 0.02, 0]} />
+      <ShelfBooks position={[-0.02, 0.02, 0]} />
       <CatFigurine position={[-0.3, 0.02, 0]} scale={1.15} rotation={[0, 0.2, 0]} />
       <Plant position={[-0.75, 0.02, 0]} scale={0.8} leaves={14} seed={11} spread={1.3} leafSize={[0.04, 0.12]} />
       <Plant position={[0.72, 0.02, 0]} scale={0.6} leaves={10} seed={5} potColor="#1f1f23" />
-      <group position={[0.45, 0.02, 0]}>
+      <group position={[0.5, 0.02, 0]}>
         {[0, 1, 2].map((i) => (
-          <mesh key={i} position={[0, 0.018 + i * 0.036, 0]} rotation={[0, i * 0.12 - 0.1, 0]}>
-            <boxGeometry args={[0.2, 0.034, 0.15]} />
-            <meshStandardMaterial color={["#e7e5e4", "#292524", "#d6a461"][i]} roughness={0.7} />
-          </mesh>
+          <group key={i} position={[0, 0.018 + i * 0.036, 0]} rotation={[0, i * 0.12 - 0.1, 0]}>
+            <RoundedBox args={[0.2, 0.034, 0.15]} radius={0.003} smoothness={2} castShadow>
+              <meshPhysicalMaterial color={["#e7e5e4", "#292524", "#d6a461"][i]} roughness={0.6} clearcoat={0.2} />
+            </RoundedBox>
+          </group>
         ))}
       </group>
     </group>
