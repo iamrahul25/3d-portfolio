@@ -1,4 +1,5 @@
 "use client";
+import { brushedTexture } from "./materials";
 
 import { useTheme } from "@/lib/theme";
 import { useMemo, useRef } from "react";
@@ -186,19 +187,60 @@ function WallArt() {
 }
 
 function PCTower({ position }: { position: [number, number, number] }) {
+  const brushed = brushedTexture(8);
   return (
     <group position={position}>
-      <RoundedBox args={[0.22, 0.46, 0.46]} radius={0.012} position={[0, 0.23, 0]}>
-        <meshStandardMaterial color="#18181b" roughness={0.35} metalness={0.3} />
+      {/* steel shell */}
+      <RoundedBox args={[0.22, 0.44, 0.46]} radius={0.01} smoothness={4} position={[0, 0.24, 0]} castShadow receiveShadow>
+        <meshStandardMaterial color="#1c1c20" roughness={0.45} metalness={0.55} roughnessMap={brushed} />
       </RoundedBox>
-      <mesh position={[0.111, 0.25, 0]} rotation={[0, Math.PI / 2, 0]}>
-        <planeGeometry args={[0.36, 0.34]} />
-        <meshStandardMaterial color="#232327" roughness={0.2} metalness={0.4} />
+      {/* tempered-glass side panel with dark tint */}
+      <RoundedBox args={[0.004, 0.38, 0.4]} radius={0.002} position={[0.111, 0.25, 0]}>
+        <meshPhysicalMaterial color="#0d0e12" roughness={0.05} metalness={0.1} clearcoat={1} clearcoatRoughness={0.04} transmission={0} />
+      </RoundedBox>
+      {/* glimpse of internals behind the glass */}
+      <mesh position={[0.104, 0.3, -0.02]} rotation-y={Math.PI / 2}>
+        <circleGeometry args={[0.05, 24]} />
+        <meshStandardMaterial color="#2b2d35" emissive="#ffb340" emissiveIntensity={0.25} />
       </mesh>
-      <mesh position={[0, 0.25, 0.231]}>
-        <boxGeometry args={[0.01, 0.32, 0.002]} />
+      {/* front mesh intake panel */}
+      <RoundedBox args={[0.2, 0.4, 0.008]} radius={0.003} position={[0, 0.25, 0.231]}>
+        <meshStandardMaterial color="#141417" roughness={0.85} metalness={0.2} />
+      </RoundedBox>
+      {Array.from({ length: 18 }, (_, i) => (
+        <mesh key={i} position={[-0.02, 0.08 + i * 0.019, 0.2355]}>
+          <boxGeometry args={[0.13, 0.006, 0.001]} />
+          <meshStandardMaterial color="#26262b" roughness={0.6} />
+        </mesh>
+      ))}
+      {/* light strip */}
+      <mesh position={[0.08, 0.25, 0.236]}>
+        <boxGeometry args={[0.008, 0.34, 0.002]} />
         <meshStandardMaterial color="#ffd27a" emissive="#ffb340" emissiveIntensity={2} toneMapped={false} />
       </mesh>
+      {/* top I/O + power button */}
+      <mesh position={[0.05, 0.4605, 0.18]}>
+        <cylinderGeometry args={[0.012, 0.012, 0.003, 24]} />
+        <meshStandardMaterial color="#2a2a30" metalness={0.8} roughness={0.25} />
+      </mesh>
+      {[-0.02, -0.045].map((x) => (
+        <mesh key={x} position={[x, 0.4605, 0.18]}>
+          <boxGeometry args={[0.014, 0.002, 0.006]} />
+          <meshStandardMaterial color="#050506" />
+        </mesh>
+      ))}
+      {/* top exhaust vent */}
+      <mesh position={[0, 0.461, -0.05]} rotation-x={-Math.PI / 2}>
+        <planeGeometry args={[0.16, 0.26]} />
+        <meshStandardMaterial color="#0e0e11" roughness={0.9} />
+      </mesh>
+      {/* feet */}
+      {[[-0.08, -0.18], [0.08, -0.18], [-0.08, 0.18], [0.08, 0.18]].map(([x, z]) => (
+        <mesh key={`${x}${z}`} position={[x, 0.01, z]}>
+          <cylinderGeometry args={[0.018, 0.02, 0.02, 16]} />
+          <meshStandardMaterial color="#0c0c0e" roughness={0.9} />
+        </mesh>
+      ))}
     </group>
   );
 }
