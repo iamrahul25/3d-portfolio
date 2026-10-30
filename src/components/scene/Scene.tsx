@@ -21,6 +21,7 @@ import { Chair } from "./Chair";
 import { Developer } from "./Developer";
 import { useTheme } from "@/lib/theme";
 import { nightMix } from "./nightMix";
+import { NightGlow } from "./parts/NightGlow";
 import { MAIN_MONITOR, MainMonitor, type ScreenAction } from "./Monitors";
 
 export type View = "overview" | "focus";
@@ -454,6 +455,7 @@ export default function Scene({
         <AdaptiveDpr pixelated={false} />
         <Lights />
         <NightAmbience />
+        <NightGlow />
         <NightBloom capable={fx} />
         <Environment resolution={256} frames={1} environmentIntensity={0.45}>
           <Lightformer intensity={2} position={[0, 5, -2]} scale={[10, 5, 1]} rotation-x={Math.PI / 2} color="#fff3e0" />
