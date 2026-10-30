@@ -3,7 +3,6 @@
 import { Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
-  AdaptiveDpr,
   CameraControls,
   CameraControlsImpl,
   ContactShadows,
@@ -405,8 +404,8 @@ function NightBloom({ capable }: { capable: boolean }) {
   const night = useTheme() === "dark";
   if (!night || !capable) return null;
   return (
-    <EffectComposer multisampling={0} enableNormalPass={false}>
-      <Bloom mipmapBlur intensity={0.7} luminanceThreshold={0.9} luminanceSmoothing={0.2} radius={0.7} />
+    <EffectComposer multisampling={4} enableNormalPass={false}>
+      <Bloom mipmapBlur intensity={0.7} luminanceThreshold={1.05} luminanceSmoothing={0.2} radius={0.7} />
     </EffectComposer>
   );
 }
@@ -439,7 +438,7 @@ export default function Scene({
 }: SceneProps) {
   // Start at a sensible DPR and step down on slow GPUs instead of dropping frames.
   const mobile = useIsMobile();
-  const [dpr, setDpr] = useState(mobile ? 1.25 : 1.5);
+  const [dpr, setDpr] = useState(() => Math.max(1, Math.min(typeof window === "undefined" ? 1.5 : window.devicePixelRatio || 1, mobile ? 1.5 : 2)));
   const [fx, setFx] = useState(canAffordEffects);
   return (
     <Canvas
@@ -456,8 +455,8 @@ export default function Scene({
       <Suspense fallback={null}>
         <PerformanceMonitor
           bounds={() => [45, 60]}
-          onIncline={() => setDpr((d) => Math.min(mobile ? 1.5 : 1.75, d + 0.25))}
-          onDecline={() => setDpr((d) => Math.max(0.85, d - 0.25))}
+          onIncline={() => setDpr((d) => Math.min(mobile ? 1.5 : 2, d + 0.25))}
+          onDecline={() => setDpr((d) => Math.max(1, d - 0.25))}
           onChange={({ factor }) => factor < 0.3 && setFx(false)}
           flipflops={3}
           onFallback={() => {
@@ -465,7 +464,6 @@ export default function Scene({
             setFx(false);
           }}
         />
-        <AdaptiveDpr pixelated={false} />
         <Lights mobile={mobile} />
         <NightAmbience />
         <NightGlow />
