@@ -1,8 +1,17 @@
 "use client";
 
-import { Suspense, useEffect, useLayoutEffect, useRef } from "react";
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { CameraControls, CameraControlsImpl, ContactShadows, Environment, Lightformer } from "@react-three/drei";
+import {
+  AdaptiveDpr,
+  CameraControls,
+  CameraControlsImpl,
+  ContactShadows,
+  Environment,
+  Lightformer,
+  PerformanceMonitor,
+  Sparkles,
+} from "@react-three/drei";
 import * as THREE from "three";
 import type { Project } from "@/data/portfolio";
 import { Room } from "./Room";
@@ -347,6 +356,26 @@ function Lights() {
   );
 }
 
+// Night-only ambience: dust motes drifting in the lamp light and a cool spill from the monitor.
+function NightAmbience() {
+  const night = useTheme() === "dark";
+  const glow = useRef<THREE.PointLight>(null);
+  useFrame(({ clock }) => {
+    if (!glow.current) return;
+    const goal = night ? 1.6 + Math.sin(clock.elapsedTime * 1.3) * 0.08 : 0;
+    glow.current.intensity = THREE.MathUtils.lerp(glow.current.intensity, goal, 0.06);
+  });
+  const [mx, my, mz] = MAIN_MONITOR.position;
+  return (
+    <>
+      <pointLight ref={glow} position={[mx, my, mz + 0.45]} color="#9db4ff" intensity={0} distance={2.4} decay={1.8} />
+      {night && (
+        <Sparkles count={60} scale={[2.6, 1.6, 1.6]} position={[-0.6, 1.6, -1.2]} size={2.2} speed={0.25} opacity={0.55} color="#ffd59a" />
+      )}
+    </>
+  );
+}
+
 export default function Scene({
   projects,
   view,
@@ -357,10 +386,12 @@ export default function Scene({
   onAction,
   onReady,
 }: SceneProps) {
+  // Start at a sensible DPR and step down on slow GPUs instead of dropping frames.
+  const [dpr, setDpr] = useState(1.5);
   return (
     <Canvas
       shadows="percentage"
-      dpr={[1, 1.75]}
+      dpr={dpr}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       camera={{ fov: FOV, near: 0.05, far: 60, position: [6, 5, 8] }}
       onCreated={({ gl }) => {
@@ -369,7 +400,16 @@ export default function Scene({
       }}
     >
       <Suspense fallback={null}>
+        <PerformanceMonitor
+          bounds={() => [45, 60]}
+          onIncline={() => setDpr((d) => Math.min(1.75, d + 0.25))}
+          onDecline={() => setDpr((d) => Math.max(0.85, d - 0.25))}
+          flipflops={3}
+          onFallback={() => setDpr(1)}
+        />
+        <AdaptiveDpr pixelated={false} />
         <Lights />
+        <NightAmbience />
         <Environment resolution={256} frames={1} environmentIntensity={0.45}>
           <Lightformer intensity={2} position={[0, 5, -2]} scale={[10, 5, 1]} rotation-x={Math.PI / 2} color="#fff3e0" />
           <Lightformer intensity={1.2} position={[-5, 1.5, -1]} rotation-y={Math.PI / 2} scale={[10, 3, 1]} color="#ffe9cc" />
