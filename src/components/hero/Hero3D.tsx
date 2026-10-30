@@ -64,6 +64,23 @@ export function Hero3D() {
   const [immersive, setImmersive] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [resetKey, setResetKey] = useState(0);
+  // Mount the WebGL scene after the first idle slot so the hero text paints first,
+  // and stop rendering frames while the hero is scrolled out of view.
+  const [mountScene, setMountScene] = useState(false);
+  const [inView, setInView] = useState(true);
+  const sectionRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
+    if (w.requestIdleCallback) w.requestIdleCallback(() => setMountScene(true), { timeout: 600 });
+    else setTimeout(() => setMountScene(true), 200);
+  }, []);
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { rootMargin: "120px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
   const stageRef = useRef<HTMLDivElement>(null);
 
   const project = selected ? (getProject(selected) ?? null) : null;
@@ -140,13 +157,15 @@ export function Hero3D() {
   }, [selected, immersive, exitImmersive]);
 
   return (
-    <section className="relative h-[88svh] min-h-[420px] md:h-[100svh] w-full" aria-label="Interactive 3D workspace">
+    <section ref={sectionRef} className="relative h-[88svh] min-h-[420px] md:h-[100svh] w-full" aria-label="Interactive 3D workspace">
       <div
         ref={stageRef}
         className={`hero-bg overflow-hidden ${immersive ? "fixed inset-0 z-[55]" : "absolute inset-0"}`}
       >
         <div className="absolute inset-0 cursor-grab active:cursor-grabbing">
+          {mountScene && (
           <Scene
+            active={inView || immersive}
             projects={projects}
             view={view}
             autoRotate={autoRotate && !immersive}
@@ -156,6 +175,7 @@ export function Hero3D() {
             onAction={onAction}
             onReady={() => setReady(true)}
           />
+          )}
         </div>
 
         <AnimatePresence>

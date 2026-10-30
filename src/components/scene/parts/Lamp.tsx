@@ -11,6 +11,8 @@ const BLACK = "#16161a";
 
 export function Lamp({ position }: { position: [number, number, number] }) {
   const night = useTheme() === "dark";
+  // The lamp's point-light shadow is a 6-face cube map; skip it on touch devices.
+  const coarse = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
   const bulb = useRef<THREE.MeshStandardMaterial>(null);
   const light = useRef<THREE.PointLight>(null);
   // Bulb follows the night blend, with a brief flicker as it "switches on".
@@ -69,7 +71,7 @@ export function Lamp({ position }: { position: [number, number, number] }) {
           intensity={2.2}
           distance={2.6}
           decay={1.6}
-          castShadow={night}
+          castShadow={night && !coarse}
           shadow-mapSize={[512, 512]}
           shadow-bias={-0.002} />
       </group>

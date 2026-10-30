@@ -32,6 +32,8 @@ export type SceneProps = {
   autoRotate: boolean;
   zoom: { id: number; dir: 1 | -1 };
   immersive?: boolean;
+  /** Render frames only while true (hero visible). */
+  active?: boolean;
   resetKey?: number;
   onAction: (action: ScreenAction) => void;
   onReady?: () => void;
@@ -321,7 +323,7 @@ const NIGHT = { hemi: 0.06, amb: 0.02, key: 0, rim: 0.12, env: 0.04, moon: 0.3, 
 const _hemiSky = new THREE.Color();
 
 // Day/night lighting rig; values ease between the two presets so toggling feels like a dimmer.
-function Lights() {
+function Lights({ mobile = false }: { mobile?: boolean }) {
   const night = useTheme() === "dark";
   const t = useRef(night ? 1 : 0);
   const hemi = useRef<THREE.HemisphereLight>(null);
@@ -363,7 +365,7 @@ function Lights() {
         intensity={2.1}
         color="#ffe6c4"
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={mobile ? [1024, 1024] : [2048, 2048]}
         shadow-bias={-0.0004}
         shadow-normalBias={0.02}
         shadow-camera-left={-4}
@@ -409,6 +411,14 @@ function NightBloom({ capable }: { capable: boolean }) {
   );
 }
 
+// Phones and small touch screens get cheaper shadows and a lower DPR ceiling.
+function useIsMobile() {
+  const [mobile] = useState(
+    () => typeof window !== "undefined" && (window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 768),
+  );
+  return mobile;
+}
+
 function canAffordEffects() {
   if (typeof window === "undefined") return false;
   const coarse = window.matchMedia("(pointer: coarse)").matches;
@@ -425,12 +435,15 @@ export default function Scene({
   resetKey,
   onAction,
   onReady,
+  active = true,
 }: SceneProps) {
   // Start at a sensible DPR and step down on slow GPUs instead of dropping frames.
-  const [dpr, setDpr] = useState(1.5);
+  const mobile = useIsMobile();
+  const [dpr, setDpr] = useState(mobile ? 1.25 : 1.5);
   const [fx, setFx] = useState(canAffordEffects);
   return (
     <Canvas
+      frameloop={active ? "always" : "never"}
       shadows="percentage"
       dpr={dpr}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
@@ -443,7 +456,7 @@ export default function Scene({
       <Suspense fallback={null}>
         <PerformanceMonitor
           bounds={() => [45, 60]}
-          onIncline={() => setDpr((d) => Math.min(1.75, d + 0.25))}
+          onIncline={() => setDpr((d) => Math.min(mobile ? 1.5 : 1.75, d + 0.25))}
           onDecline={() => setDpr((d) => Math.max(0.85, d - 0.25))}
           onChange={({ factor }) => factor < 0.3 && setFx(false)}
           flipflops={3}
@@ -453,7 +466,7 @@ export default function Scene({
           }}
         />
         <AdaptiveDpr pixelated={false} />
-        <Lights />
+        <Lights mobile={mobile} />
         <NightAmbience />
         <NightGlow />
         <NightBloom capable={fx} />
