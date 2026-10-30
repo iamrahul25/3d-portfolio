@@ -121,6 +121,8 @@ function CameraRig({
     c.touches.one = ACTION.TOUCH_ROTATE;
     c.touches.three = ACTION.NONE;
     c.setBoundary(ROOM_BOUNDS);
+    // Dev-only hook so screenshot scripts can frame close-ups.
+    if (process.env.NODE_ENV !== "production") (window as unknown as { __controls?: CameraControlsImpl }).__controls = c;
 
     const onStart = () => (lastInteraction.current = Infinity);
     const onEnd = () => (lastInteraction.current = performance.now());
