@@ -111,3 +111,17 @@ export function brushedTexture(seed = 5) {
     }
   }, false);
 }
+
+/** Woven office-chair mesh as an alpha map: white = solid strand, black = hole. */
+export function meshWeaveAlpha() {
+  return make("weave", 128, (g, s) => {
+    g.fillStyle = "#000";
+    g.fillRect(0, 0, s, s);
+    g.fillStyle = "#fff";
+    const step = 8;
+    for (let i = 0; i < s; i += step) {
+      g.fillRect(i, 0, 3, s);
+      g.fillRect(0, i, s, 3);
+    }
+  }, false);
+}
