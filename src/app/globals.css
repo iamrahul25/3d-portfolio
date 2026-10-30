@@ -200,3 +200,6 @@ p {
 [data-theme="dark"] .pill {
   background-color: #191c27;
 }
+[data-theme="dark"] .bg-sand {
+  background-color: var(--sand);
+}

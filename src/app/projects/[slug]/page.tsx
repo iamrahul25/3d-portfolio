@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { categoryLabels, getProject, projects } from "@/data/portfolio";
 import { ProjectThumb } from "@/components/ui/ProjectThumb";
-import { Reveal } from "@/components/ui/Reveal";
+import { Reveal, Stagger, StaggerItem } from "@/components/ui/Reveal";
 
 export function generateStaticParams() {
   return projects.map((p) => ({ slug: p.slug }));
@@ -68,7 +68,7 @@ async function ProjectContent({ params }: { params: PageProps<"/projects/[slug]"
       </Reveal>
 
       <Reveal delay={0.1}>
-        <ProjectThumb project={project} className="mt-10 aspect-[16/9] rounded-[2rem] shadow-xl shadow-black/5" />
+        <ProjectThumb project={project} className="mt-10 aspect-[16/9] rounded-[2rem] shadow-xl shadow-black/5 ring-1 ring-black/5" />
       </Reveal>
 
       <div className="mt-14 grid gap-12 md:grid-cols-[1.4fr_1fr]">
@@ -76,33 +76,33 @@ async function ProjectContent({ params }: { params: PageProps<"/projects/[slug]"
           <h2 className="text-2xl font-bold">Overview</h2>
           <p className="mt-4 text-lg leading-relaxed text-ink/75">{project.description}</p>
           <h2 className="mt-10 text-2xl font-bold">Highlights</h2>
-          <ul className="mt-4 space-y-3">
+          <Stagger as="ul" className="mt-4 space-y-3" stagger={0.08}>
             {project.highlights.map((h) => (
-              <li key={h} className="flex gap-3 text-ink/80">
+              <StaggerItem as="li" key={h} className="flex gap-3 text-ink/80">
                 <span className="mt-2 h-2 w-2 shrink-0 rounded-full" style={{ background: project.theme.accent }} />
                 {h}
-              </li>
+              </StaggerItem>
             ))}
-          </ul>
+          </Stagger>
         </Reveal>
 
         <Reveal delay={0.1}>
-          <aside className="rounded-3xl bg-white p-6 ring-1 ring-black/5">
+          <aside className="skill-card rounded-3xl bg-white p-6 shadow-sm ring-1 ring-black/5">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Tech stack</h2>
-            <ul className="mt-4 flex flex-wrap gap-2">
+            <Stagger as="ul" className="mt-4 flex flex-wrap gap-2" stagger={0.04}>
               {project.stack.map((s) => (
-                <li key={s} className="rounded-full bg-sand px-3 py-1 text-sm font-medium">
+                <StaggerItem as="li" key={s} className="chip rounded-full bg-sand px-3 py-1 text-sm font-medium">
                   {s}
-                </li>
+                </StaggerItem>
               ))}
-            </ul>
+            </Stagger>
             <div className="mt-6 flex flex-col gap-3">
               {project.liveUrl && (
                 <a
                   href={project.liveUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded-full bg-accent px-5 py-3 text-center text-sm font-semibold transition hover:bg-accent-strong"
+                  className="rounded-full bg-accent px-5 py-3 text-center text-sm font-semibold shadow-md shadow-accent/30 transition hover:-translate-y-0.5 hover:bg-accent-strong"
                 >
                   Visit live site ↗
                 </a>
@@ -112,7 +112,7 @@ async function ProjectContent({ params }: { params: PageProps<"/projects/[slug]"
                   href={project.sourceUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded-full border border-ink/15 px-5 py-3 text-center text-sm font-semibold transition hover:bg-sand"
+                  className="rounded-full border border-ink/15 px-5 py-3 text-center text-sm font-semibold transition hover:-translate-y-0.5 hover:bg-sand"
                 >
                   View source
                 </a>
@@ -125,10 +125,10 @@ async function ProjectContent({ params }: { params: PageProps<"/projects/[slug]"
       <Reveal>
         <Link
           href={`/projects/${next.slug}`}
-          className="group mt-20 flex items-center justify-between rounded-3xl bg-ink p-8 text-cream transition hover:bg-black"
+          className="contact-card group mt-20 flex items-center justify-between rounded-3xl p-8 transition hover:-translate-y-1 hover:shadow-2xl"
         >
           <div>
-            <p className="text-sm text-cream/60">Next project</p>
+            <p className="text-sm opacity-60">Next project</p>
             <p className="mt-1 text-2xl font-bold">{next.title}</p>
           </div>
           <span className="text-2xl transition-transform group-hover:translate-x-2">→</span>
