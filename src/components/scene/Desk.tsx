@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
+import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { Instance, Instances, RoundedBox } from "@react-three/drei";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
@@ -66,24 +67,131 @@ function Cable({ points, radius = 0.006, color = "#151518" }: { points: [number,
   );
 }
 
-function Mug({ position }: { position: [number, number, number] }) {
+// Ergonomic mouse: egg-shaped lathe body (wider at the palm), flattened, with split
+// buttons, a ribbed scroll wheel in a slot, rubber side grips and a satin finish.
+function Mouse({ position }: { position: [number, number, number] }) {
+  const body = useMemo(() => {
+    const pts: THREE.Vector2[] = [];
+    const N = 28;
+    for (let i = 0; i <= N; i++) {
+      const t = i / N; // 0 = nose, 1 = tail
+      const y = -0.062 + t * 0.124;
+      // egg profile: blunt nose, fullest ~65% back, rounded tail
+      const r = 0.034 * Math.pow(1 - Math.pow(Math.abs(2 * t - 1), 2.4), 1 / 2.4) * (0.86 + 0.2 * t); // superellipse: blunt nose, full palm
+      pts.push(new THREE.Vector2(Math.max(r, 0.0001), y));
+    }
+    const g = new THREE.LatheGeometry(pts, 48);
+    g.rotateX(Math.PI / 2); // lathe axis Y -> Z: nose towards -Z (screen), palm towards the user
+    g.computeVertexNormals();
+    return g;
+  }, []);
+  const satin = <meshPhysicalMaterial color="#1a1b20" roughness={0.42} metalness={0} clearcoat={0.35} clearcoatRoughness={0.5} />;
   return (
     <group position={position}>
-      <mesh position={[0, 0.05, 0]}>
-        <cylinderGeometry args={[0.038, 0.034, 0.1, 32]} />
-        <meshStandardMaterial color="#fbfaf7" roughness={0.25} />
+      {/* main shell: flattened egg, lower part sinks below the pad surface */}
+      <mesh geometry={body} scale={[0.95, 0.52, 1]} position={[0, 0.004, 0]} castShadow>
+        {satin}
       </mesh>
-      <mesh position={[0, 0.093, 0]}>
-        <cylinderGeometry args={[0.033, 0.033, 0.005, 32]} />
-        <meshStandardMaterial color="#5a3a22" roughness={0.2} />
+      {/* rubber side grips */}
+      {[-1, 1].map((s) => (
+        <mesh key={s} geometry={body} scale={[0.985, 0.36, 0.78]} position={[s * 0.0012, 0.003, 0.012]}>
+          <meshStandardMaterial color="#2c2e35" roughness={0.9} />
+        </mesh>
+      ))}
+      {/* button split groove + palm seam */}
+      <mesh position={[0, 0.0195, -0.02]} rotation-x={-0.16}>
+        <boxGeometry args={[0.0016, 0.0016, 0.05]} />
+        <meshStandardMaterial color="#060608" roughness={1} />
       </mesh>
-      <mesh position={[0.042, 0.05, 0]} rotation={[0, 0, 0]}>
-        <torusGeometry args={[0.022, 0.006, 10, 24, Math.PI]} />
-        <meshStandardMaterial color="#fbfaf7" roughness={0.25} />
+      {/* scroll wheel in its slot */}
+      <mesh position={[0, 0.0168, -0.036]}>
+        <boxGeometry args={[0.009, 0.0025, 0.022]} />
+        <meshStandardMaterial color="#050506" roughness={1} />
       </mesh>
-      <mesh position={[0, 0.002, 0]}>
-        <cylinderGeometry args={[0.055, 0.055, 0.004, 32]} />
-        <meshStandardMaterial color="#b98a55" roughness={0.8} />
+      <mesh position={[0, 0.0118, -0.036]} rotation-z={Math.PI / 2}>
+        <cylinderGeometry args={[0.0085, 0.0085, 0.0062, 20]} />
+        <meshStandardMaterial color="#6b6e78" metalness={0.6} roughness={0.35} />
+      </mesh>
+      {/* tiny status LED */}
+      <mesh position={[0, 0.0222, 0.004]}>
+        <sphereGeometry args={[0.0013, 8, 6]} />
+        <meshStandardMaterial color="#7cf5ff" emissive="#4fe3ff" emissiveIntensity={2.5} toneMapped={false} />
+      </mesh>
+    </group>
+  );
+}
+
+// Glazed ceramic mug: one lathe profile for outer wall, rounded rim and inner wall,
+// a C-shaped handle, coffee with a glossy surface and a faint crema ring, plus wisps of steam.
+function Mug({ position }: { position: [number, number, number] }) {
+  const R = 0.038;
+  const H = 0.1;
+  const wall = 0.0042;
+  const shell = useMemo(() => {
+    const p: THREE.Vector2[] = [];
+    p.push(new THREE.Vector2(0.0001, 0));
+    p.push(new THREE.Vector2(R - 0.006, 0));
+    p.push(new THREE.Vector2(R - 0.001, 0.003)); // foot bevel
+    p.push(new THREE.Vector2(R, 0.012));
+    p.push(new THREE.Vector2(R + 0.0008, H * 0.5));
+    p.push(new THREE.Vector2(R + 0.0012, H - 0.004));
+    // rounded rim
+    for (let i = 0; i <= 8; i++) {
+      const a = (i / 8) * Math.PI;
+      p.push(new THREE.Vector2(R + 0.0012 - wall / 2 + Math.cos(a) * (wall / 2), H - 0.004 + Math.sin(a) * (wall / 2) + 0.002));
+    }
+    p.push(new THREE.Vector2(R + 0.0012 - wall, H - 0.006));
+    p.push(new THREE.Vector2(R - wall, 0.012));
+    p.push(new THREE.Vector2(0.0001, 0.009));
+    const g = new THREE.LatheGeometry(p, 56);
+    g.computeVertexNormals();
+    return g;
+  }, []);
+  const glaze = <meshPhysicalMaterial color="#f6f3ec" roughness={0.18} clearcoat={1} clearcoatRoughness={0.08} />;
+  const steam = useRef<THREE.Group>(null);
+  useFrame(({ clock }) => {
+    const g = steam.current;
+    if (!g) return;
+    const t = clock.elapsedTime;
+    g.children.forEach((c, i) => {
+      const k = ((t * 0.18 + i / g.children.length) % 1 + 1) % 1;
+      c.position.set(Math.sin(t * 0.8 + i * 2.1) * 0.008, 0.11 + k * 0.12, Math.cos(t * 0.6 + i) * 0.006);
+      c.scale.setScalar(0.03 + k * 0.05);
+      ((c as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = Math.sin(k * Math.PI) * 0.09;
+    });
+  });
+  return (
+    <group position={position}>
+      <mesh geometry={shell} castShadow receiveShadow>
+        <meshPhysicalMaterial color="#f6f3ec" roughness={0.18} clearcoat={1} clearcoatRoughness={0.08} side={THREE.DoubleSide} />
+      </mesh>
+      {/* coffee: dark, glossy, with crema ring */}
+      <mesh position={[0, H * 0.82, 0]} rotation-x={-Math.PI / 2}>
+        <circleGeometry args={[R - wall + 0.0008, 40]} />
+        <meshPhysicalMaterial color="#2a160b" roughness={0.08} clearcoat={1} clearcoatRoughness={0.05} />
+      </mesh>
+      <mesh position={[0, H * 0.82 + 0.0004, 0]} rotation-x={-Math.PI / 2}>
+        <ringGeometry args={[R - wall - 0.004, R - wall + 0.0006, 40]} />
+        <meshStandardMaterial color="#8a5a33" roughness={0.6} transparent opacity={0.55} />
+      </mesh>
+      {/* C-shaped handle */}
+      <mesh position={[R + 0.004, H * 0.52, 0]} rotation={[0, 0, -Math.PI / 2]} castShadow>
+        <torusGeometry args={[0.024, 0.0062, 14, 32, Math.PI]} />
+        {glaze}
+      </mesh>
+      {/* steam wisps */}
+      <group ref={steam}>
+        {[0, 1, 2].map((i) => (
+          <mesh key={i}>
+            <sphereGeometry args={[1, 12, 10]} />
+            <meshBasicMaterial color="#ffffff" transparent opacity={0} depthWrite={false} />
+          </mesh>
+        ))}
+      </group>
+      {/* cork coaster */}
+      <mesh position={[0, -0.001, 0]} receiveShadow>
+        <cylinderGeometry args={[0.055, 0.055, 0.004, 40]} />
+        <meshStandardMaterial color="#b98a55" roughness={0.9} />
       </mesh>
     </group>
   );
@@ -252,14 +360,13 @@ export function Desk() {
         <meshStandardMaterial color="#ffffff" map={mat} roughness={0.95} />
       </RoundedBox>
       <Keyboard position={[-0.12, y + 0.013, -1.42]} />
-      <group position={[0.31, y + 0.016, -1.42]}>
-        <mesh scale={[0.032, 0.016, 0.052]}>
-          <sphereGeometry args={[1, 24, 16]} />
-          <meshStandardMaterial color="#141418" roughness={0.3} />
-        </mesh>
-      </group>
+      {/* cloth mousepad with stitched edge */}
+      <RoundedBox args={[0.24, 0.003, 0.2]} radius={0.0014} smoothness={2} position={[0.33, y + 0.0055, -1.42]} receiveShadow>
+        <meshStandardMaterial color="#3b3f4a" roughness={0.95} map={mat} />
+      </RoundedBox>
+      <Mouse position={[0.33, y + 0.007, -1.42]} />
 
-      <Mug position={[0.48, y, -1.74]} />
+      <Mug position={[0.5, y + 0.003, -1.64]} />
       <PencilCup position={[0.66, y, -1.95]} />
       <PhoneStand position={[0.66, y, -1.56]} rotation={[0, -0.35, 0]} />
       <RoundedBox args={[0.1, 0.024, 0.065]} radius={0.008} position={[0.36, y + 0.012, -1.68]}>
