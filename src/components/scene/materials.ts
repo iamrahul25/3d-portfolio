@@ -129,3 +129,20 @@ export function meshWeaveAlpha() {
     g.filter = "none";
   }, false);
 }
+
+/** Cork: warm base with dense dark/light granules. */
+export function corkTexture(seed = 13) {
+  return make(`cork-${seed}`, 512, (g, s) => {
+    const r = rng(seed);
+    g.fillStyle = "#c98e55";
+    g.fillRect(0, 0, s, s);
+    for (let i = 0; i < 9000; i++) {
+      const x = r() * s, y = r() * s, rad = 0.6 + r() * 2.2;
+      const d = r();
+      g.fillStyle = d < 0.45 ? `rgba(110,60,25,${0.25 + r() * 0.4})` : d < 0.8 ? `rgba(235,185,125,${0.25 + r() * 0.35})` : `rgba(60,30,12,${0.3 + r() * 0.3})`;
+      g.beginPath();
+      g.ellipse(x, y, rad, rad * (0.6 + r() * 0.6), r() * 3, 0, Math.PI * 2);
+      g.fill();
+    }
+  });
+}

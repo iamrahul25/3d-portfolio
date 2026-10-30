@@ -1,10 +1,10 @@
 "use client";
-import { brushedTexture, woodTexture } from "./materials";
+import { brushedTexture, corkTexture, woodTexture } from "./materials";
 
 import { useTheme } from "@/lib/theme";
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Instance, Instances, RoundedBox } from "@react-three/drei";
+import { RoundedBox } from "@react-three/drei";
 import * as THREE from "three";
 import { Plant } from "./parts/Plant";
 import { CatFigurine } from "./parts/CatFigurine";
@@ -158,48 +158,106 @@ function Shelf() {
   );
 }
 
+function Note({ size, color }: { size: [number, number]; color: string }) {
+  // Paper with a slight curl at the bottom corners.
+  const geo = useMemo(() => {
+    const g = new THREE.PlaneGeometry(size[0], size[1], 8, 8);
+    const p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i) / size[0] + 0.5, y = 0.5 - p.getY(i) / size[1];
+      p.setZ(i, Math.pow(Math.max(0, y - 0.7) / 0.3, 2) * 0.014 * (0.4 + Math.abs(x - 0.5) * 1.2));
+    }
+    g.computeVertexNormals();
+    return g;
+  }, [size]);
+  return (
+    <mesh geometry={geo} castShadow receiveShadow>
+      <meshStandardMaterial color={color} roughness={0.92} side={THREE.DoubleSide} />
+    </mesh>
+  );
+}
+
+function Pin({ color, position }: { color: string; position: [number, number, number] }) {
+  return (
+    <group position={position} rotation-x={Math.PI / 2}>
+      <mesh position={[0, 0.004, 0]}>
+        <cylinderGeometry args={[0.011, 0.011, 0.005, 20]} />
+        <meshPhysicalMaterial color={color} roughness={0.25} clearcoat={1} />
+      </mesh>
+      <mesh position={[0, 0.012, 0]}>
+        <cylinderGeometry args={[0.006, 0.008, 0.012, 16]} />
+        <meshPhysicalMaterial color={color} roughness={0.25} clearcoat={1} />
+      </mesh>
+      <mesh position={[0, 0.021, 0]}>
+        <sphereGeometry args={[0.009, 16, 10]} />
+        <meshPhysicalMaterial color={color} roughness={0.25} clearcoat={1} />
+      </mesh>
+      <mesh position={[0, -0.002, 0]}>
+        <cylinderGeometry args={[0.0012, 0.0012, 0.008, 6]} />
+        <meshStandardMaterial color="#c9ccd2" metalness={1} roughness={0.25} />
+      </mesh>
+    </group>
+  );
+}
+
 function Pegboard() {
-  const holes = useMemo(() => {
-    const list: [number, number][] = [];
-    for (let x = 0; x < 13; x++) for (let y = 0; y < 10; y++) list.push([-0.39 + x * 0.065, -0.3 + y * 0.065]);
-    return list;
+  const cork = useMemo(() => {
+    const t = corkTexture().clone();
+    t.repeat.set(1.8, 1.4);
+    t.needsUpdate = true;
+    return t;
   }, []);
-  const notes: { p: [number, number]; r: number; s: [number, number] }[] = [
-    { p: [-0.22, 0.12], r: 0.05, s: [0.2, 0.22] },
-    { p: [0.08, 0.15], r: -0.04, s: [0.17, 0.2] },
-    { p: [0.25, -0.12], r: 0.06, s: [0.18, 0.2] },
-    { p: [-0.12, -0.17], r: -0.03, s: [0.22, 0.16] },
+  const frameWood = woodTexture("#b98a55", 31);
+  const notes: { p: [number, number]; r: number; s: [number, number]; c: string; pin: string }[] = [
+    { p: [-0.22, 0.12], r: 0.05, s: [0.2, 0.22], c: "#fbf8f1", pin: "#ef4444" },
+    { p: [0.08, 0.15], r: -0.04, s: [0.17, 0.17], c: "#fde68a", pin: "#111827" },
+    { p: [0.25, -0.12], r: 0.06, s: [0.18, 0.2], c: "#fbf8f1", pin: "#f59e0b" },
+    { p: [-0.12, -0.17], r: -0.03, s: [0.22, 0.16], c: "#dbeafe", pin: "#10b981" },
   ];
+  const W = 0.92, H = 0.72, F = 0.03;
   return (
     <group position={[1.6, 1.55, -2.185]}>
-      <RoundedBox args={[0.92, 0.72, 0.025]} radius={0.01}>
-        <meshStandardMaterial color="#d79b5c" roughness={0.75} />
-      </RoundedBox>
-      <Instances limit={200}>
-        <circleGeometry args={[0.007, 8]} />
-        <meshBasicMaterial color="#8a5a2b" />
-        {holes.map(([x, y], i) => (
-          <Instance key={i} position={[x, y, 0.0135]} />
-        ))}
-      </Instances>
+      {/* cork panel */}
+      <mesh castShadow receiveShadow>
+        <boxGeometry args={[W - F, H - F, 0.018]} />
+        <meshStandardMaterial color="#f0d2ad" map={cork} bumpMap={cork} bumpScale={1.2} roughness={0.95} />
+      </mesh>
+      {/* wooden frame */}
+      {[
+        [0, H / 2 - F / 2, W, F],
+        [0, -H / 2 + F / 2, W, F],
+        [W / 2 - F / 2, 0, F, H - 2 * F],
+        [-W / 2 + F / 2, 0, F, H - 2 * F],
+      ].map(([x, y, w, h], i) => (
+        <RoundedBox key={i} args={[w, h, 0.03]} radius={0.006} smoothness={3} position={[x, y, 0.004]} castShadow>
+          <meshStandardMaterial color="#c99a62" map={frameWood} roughness={0.55} />
+        </RoundedBox>
+      ))}
       {notes.map((n, i) => (
-        <group key={i} position={[n.p[0], n.p[1], 0.016]} rotation={[0, 0, n.r]}>
-          <mesh>
-            <planeGeometry args={n.s} />
-            <meshStandardMaterial color="#fbf8f1" roughness={0.9} />
-          </mesh>
+        <group key={i} position={[n.p[0], n.p[1], 0.011]} rotation={[0, 0, n.r]}>
+          <Note size={n.s} color={n.c} />
           {[0, 1, 2].map((l) => (
-            <mesh key={l} position={[-n.s[0] * 0.1, n.s[1] * 0.15 - l * 0.035, 0.001]}>
-              <planeGeometry args={[n.s[0] * 0.6, 0.008]} />
-              <meshBasicMaterial color="#c8c2b6" />
+            <mesh key={l} position={[-n.s[0] * 0.1, n.s[1] * 0.15 - l * 0.035, 0.0035]}>
+              <planeGeometry args={[n.s[0] * (0.6 - l * 0.12), 0.006]} />
+              <meshBasicMaterial color="#8f8a80" transparent opacity={0.7} />
             </mesh>
           ))}
-          <mesh position={[0, n.s[1] / 2 - 0.015, 0.008]}>
-            <sphereGeometry args={[0.012, 12, 8]} />
-            <meshStandardMaterial color={["#ef4444", "#111827", "#f59e0b", "#111827"][i]} />
-          </mesh>
+          <Pin color={n.pin} position={[0, n.s[1] / 2 - 0.018, 0.002]} />
         </group>
       ))}
+      {/* polaroid */}
+      <group position={[0.3, 0.17, 0.012]} rotation-z={0.09}>
+        <Note size={[0.13, 0.155]} color="#fdfcf8" />
+        <mesh position={[0, 0.012, 0.0035]}>
+          <planeGeometry args={[0.11, 0.105]} />
+          <meshStandardMaterial color="#7fa7c9" roughness={0.3} />
+        </mesh>
+        <mesh position={[0, -0.005, 0.004]}>
+          <circleGeometry args={[0.025, 20]} />
+          <meshStandardMaterial color="#f6c76a" roughness={0.4} />
+        </mesh>
+        <Pin color="#3b82f6" position={[0, 0.06, 0.002]} />
+      </group>
     </group>
   );
 }
