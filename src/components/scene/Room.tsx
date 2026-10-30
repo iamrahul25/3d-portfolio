@@ -1,10 +1,10 @@
 "use client";
-import { brushedTexture, corkTexture, woodTexture } from "./materials";
+import { brushedTexture, corkTexture, floorTexture, plasterTexture, rugTexture, woodTexture } from "./materials";
 
 import { useTheme } from "@/lib/theme";
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { RoundedBox } from "@react-three/drei";
+import { Instance, Instances, RoundedBox } from "@react-three/drei";
 import * as THREE from "three";
 import { Plant } from "./parts/Plant";
 import { CatFigurine } from "./parts/CatFigurine";
@@ -343,6 +343,42 @@ function PCTower({ position }: { position: [number, number, number] }) {
   );
 }
 
+function Rug() {
+  const map = rugTexture();
+  return (
+    <group position={[-0.1, 0, -0.6]}>
+      {/* soft pile body with rounded edges */}
+      <RoundedBox args={[2.0, 0.014, 1.55]} radius={0.006} smoothness={3} position={[0, 0.007, 0]} receiveShadow>
+        <meshStandardMaterial color="#b97a2a" roughness={1} />
+      </RoundedBox>
+      {/* textured pile surface */}
+      <mesh position={[0, 0.0142, 0]} rotation-x={-Math.PI / 2} receiveShadow>
+        <planeGeometry args={[1.99, 1.54]} />
+        <meshPhysicalMaterial
+          color="#ffffff"
+          map={map}
+          bumpMap={map}
+          bumpScale={1.5}
+          roughness={1}
+          sheen={0.6}
+          sheenRoughness={0.6}
+          sheenColor="#ffe2b0"
+        />
+      </mesh>
+      {/* fringe on the short ends */}
+      {[-1, 1].map((side) => (
+        <Instances key={side} limit={80}>
+          <boxGeometry args={[0.004, 0.003, 0.05]} />
+          <meshStandardMaterial color="#efe0c4" roughness={1} />
+          {Array.from({ length: 70 }, (_, i) => (
+            <Instance key={i} position={[-0.97 + i * 0.0281, 0.002, side * (0.775 + 0.022)]} rotation-y={Math.sin(i * 1.7) * 0.25} />
+          ))}
+        </Instances>
+      ))}
+    </group>
+  );
+}
+
 export function Room() {
   return (
     <group>
@@ -350,9 +386,7 @@ export function Room() {
         <meshStandardMaterial color="#efe5d8" roughness={0.9} />
       </RoundedBox>
 
-      <RoundedBox args={[2.0, 0.014, 1.55]} radius={0.006} position={[-0.1, 0.007, -0.6]}>
-        <meshStandardMaterial color="#f0ae35" roughness={1} />
-      </RoundedBox>
+      <Rug />
 
       <FadingWall position={[0, 1.5, -2.22]} rotation={[0, 0, 0]} size={[5.4, 3]} normal={[0, 0, 1]}>
         <Shelf />

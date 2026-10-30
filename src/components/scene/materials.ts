@@ -146,3 +146,63 @@ export function corkTexture(seed = 13) {
     }
   });
 }
+
+/** Rug: low-pile wool with fibre noise, a woven border band and an inner pinstripe. */
+export function rugTexture(base = "#eaa63a", seed = 17) {
+  return make(`rug-${base}-${seed}`, 1024, (g, s) => {
+    const r = rng(seed);
+    g.fillStyle = base;
+    g.fillRect(0, 0, s, s);
+    for (let i = 0; i < 60000; i++) {
+      const x = r() * s, y = r() * s;
+      g.strokeStyle = r() < 0.5 ? `rgba(255,240,210,${0.05 + r() * 0.08})` : `rgba(90,50,10,${0.05 + r() * 0.09})`;
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(x, y);
+      g.lineTo(x + (r() - 0.5) * 4, y + (r() - 0.5) * 4);
+      g.stroke();
+    }
+    const band = s * 0.045;
+    g.strokeStyle = "rgba(120,70,20,0.55)";
+    g.lineWidth = band;
+    g.strokeRect(band / 2, band / 2, s - band, s - band);
+    g.strokeStyle = "rgba(255,245,225,0.55)";
+    g.lineWidth = 4;
+    g.strokeRect(band * 1.8, band * 1.8, s - band * 3.6, s - band * 3.6);
+  });
+}
+
+/** Light oak floorboards: staggered planks with grain and thin seams. */
+export function floorTexture(seed = 23) {
+  return make(`floor-${seed}`, 1024, (g, s) => {
+    const r = rng(seed);
+    const rows = 8;
+    const h = s / rows;
+    for (let row = 0; row < rows; row++) {
+      let x = -r() * s * 0.5;
+      while (x < s) {
+        const w = s * (0.35 + r() * 0.4);
+        const l = 205 + Math.floor(r() * 22);
+        g.fillStyle = `rgb(${l},${l - 12},${l - 30})`;
+        g.fillRect(x, row * h, w, h);
+        for (let k = 0; k < 14; k++) {
+          const yy = row * h + r() * h;
+          g.strokeStyle = r() < 0.6 ? `rgba(120,85,50,${0.05 + r() * 0.08})` : `rgba(255,245,225,${0.05 + r() * 0.07})`;
+          g.lineWidth = 0.6 + r() * 1.6;
+          g.beginPath();
+          for (let xx = 0; xx <= w; xx += 10) {
+            const y2 = yy + Math.sin((xx + x) * 0.01 + k) * 2;
+            if (xx === 0) g.moveTo(x + xx, y2);
+            else g.lineTo(x + xx, y2);
+          }
+          g.stroke();
+        }
+        g.fillStyle = "rgba(70,50,30,0.35)";
+        g.fillRect(x, row * h, 1.5, h);
+        x += w;
+      }
+      g.fillStyle = "rgba(70,50,30,0.4)";
+      g.fillRect(0, row * h, s, 1.5);
+    }
+  });
+}
