@@ -9,6 +9,7 @@ import { Room } from "./Room";
 import { Desk } from "./Desk";
 import { Chair } from "./Chair";
 import { Developer } from "./Developer";
+import { useTheme } from "@/lib/theme";
 import { MAIN_MONITOR, MainMonitor, type ScreenAction } from "./Monitors";
 
 export type View = "overview" | "focus";
@@ -286,6 +287,66 @@ function Ready({ onReady }: { onReady?: () => void }) {
   return null;
 }
 
+const DAY = { hemi: 0.75, amb: 0.15, key: 2.1, rim: 0.55, env: 0.45, moon: 0, exposure: 1.15 };
+const NIGHT = { hemi: 0.06, amb: 0.02, key: 0, rim: 0.12, env: 0.04, moon: 0.3, exposure: 0.95 };
+const _hemiSky = new THREE.Color();
+
+// Day/night lighting rig; values ease between the two presets so toggling feels like a dimmer.
+function Lights() {
+  const night = useTheme() === "dark";
+  const t = useRef(night ? 1 : 0);
+  const hemi = useRef<THREE.HemisphereLight>(null);
+  const amb = useRef<THREE.AmbientLight>(null);
+  const key = useRef<THREE.DirectionalLight>(null);
+  const rim = useRef<THREE.DirectionalLight>(null);
+  const moon = useRef<THREE.DirectionalLight>(null);
+
+  useFrame(({ gl, scene }, delta) => {
+    const goal = night ? 1 : 0;
+    t.current = THREE.MathUtils.damp(t.current, goal, 3.5, delta);
+    const k = t.current;
+    const mix = (p: keyof typeof DAY) => THREE.MathUtils.lerp(DAY[p], NIGHT[p], k);
+    if (hemi.current) {
+      hemi.current.intensity = mix("hemi");
+      hemi.current.color.copy(_hemiSky.set("#fff4e6").lerp(new THREE.Color("#6f7cff"), k));
+    }
+    if (amb.current) amb.current.intensity = mix("amb");
+    if (key.current) key.current.intensity = mix("key");
+    if (rim.current) rim.current.intensity = mix("rim");
+    if (moon.current) moon.current.intensity = mix("moon");
+    // Set every frame: drei's <Environment> re-applies its own intensity on re-render.
+    scene.environmentIntensity = mix("env");
+    gl.toneMappingExposure = mix("exposure");
+  });
+
+  return (
+    <>
+      <hemisphereLight ref={hemi} args={["#fff4e6", "#cdb9a3", 0.75]} />
+      <ambientLight ref={amb} intensity={0.15} />
+      {/* cool rim light from behind-left to separate silhouettes from the walls */}
+      <directionalLight ref={rim} position={[-4, 3.5, -3]} intensity={0.55} color="#cfe0ff" />
+      {/* moonlight, only visible at night */}
+      <directionalLight ref={moon} position={[4, 4, 4]} intensity={0} color="#8fa2ff" />
+      <directionalLight
+        ref={key}
+        position={[3.5, 6, 3.2]}
+        intensity={2.1}
+        color="#ffe6c4"
+        castShadow
+        shadow-mapSize={[2048, 2048]}
+        shadow-bias={-0.0004}
+        shadow-normalBias={0.02}
+        shadow-camera-left={-4}
+        shadow-camera-right={4}
+        shadow-camera-top={4}
+        shadow-camera-bottom={-4}
+        shadow-camera-near={0.5}
+        shadow-camera-far={20}
+      />
+    </>
+  );
+}
+
 export default function Scene({
   projects,
   view,
@@ -298,7 +359,7 @@ export default function Scene({
 }: SceneProps) {
   return (
     <Canvas
-      shadows="soft"
+      shadows="percentage"
       dpr={[1, 1.75]}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       camera={{ fov: FOV, near: 0.05, far: 60, position: [6, 5, 8] }}
@@ -308,25 +369,7 @@ export default function Scene({
       }}
     >
       <Suspense fallback={null}>
-        <hemisphereLight args={["#fff4e6", "#cdb9a3", 0.75]} />
-        <ambientLight intensity={0.15} />
-        {/* cool rim light from behind-left to separate silhouettes from the walls */}
-        <directionalLight position={[-4, 3.5, -3]} intensity={0.55} color="#cfe0ff" />
-        <directionalLight
-          position={[3.5, 6, 3.2]}
-          intensity={2.1}
-          color="#ffe6c4"
-          castShadow
-          shadow-mapSize={[2048, 2048]}
-          shadow-bias={-0.0004}
-          shadow-normalBias={0.02}
-          shadow-camera-left={-4}
-          shadow-camera-right={4}
-          shadow-camera-top={4}
-          shadow-camera-bottom={-4}
-          shadow-camera-near={0.5}
-          shadow-camera-far={20}
-        />
+        <Lights />
         <Environment resolution={256} frames={1} environmentIntensity={0.45}>
           <Lightformer intensity={2} position={[0, 5, -2]} scale={[10, 5, 1]} rotation-x={Math.PI / 2} color="#fff3e0" />
           <Lightformer intensity={1.2} position={[-5, 1.5, -1]} rotation-y={Math.PI / 2} scale={[10, 3, 1]} color="#ffe9cc" />

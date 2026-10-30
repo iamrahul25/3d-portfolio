@@ -1,10 +1,24 @@
 @import "tailwindcss";
 
+:root {
+  --cream: #f7f1e9;
+  --sand: #efe5d8;
+  --ink: #17171a;
+  --muted: #6b6b73;
+}
+
+[data-theme="dark"] {
+  --cream: #0e0f14;
+  --sand: #171922;
+  --ink: #ecebf2;
+  --muted: #9a9aa8;
+}
+
 @theme inline {
-  --color-cream: #f7f1e9;
-  --color-sand: #efe5d8;
-  --color-ink: #17171a;
-  --color-muted: #6b6b73;
+  --color-cream: var(--cream);
+  --color-sand: var(--sand);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
   --color-accent: #f5b400;
   --color-accent-strong: #e2a200;
   --font-sans: var(--font-geist-sans);
@@ -65,3 +79,41 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
     inset 0 -1px 0 rgba(255, 255, 255, 0.25);
 }
+
+/* ---------- Night mode ---------- */
+html {
+  transition: background-color 0.5s ease;
+}
+body {
+  transition: background-color 0.5s ease, color 0.5s ease;
+}
+
+[data-theme="dark"] .hero-bg {
+  background:
+    radial-gradient(55% 50% at 55% 45%, #1d2033 0%, rgba(29, 32, 51, 0) 70%),
+    radial-gradient(70% 60% at 85% 10%, #2a2036 0%, rgba(42, 32, 54, 0) 60%),
+    linear-gradient(180deg, #0c0d14 0%, #12131c 100%);
+}
+
+[data-theme="dark"] .glass,
+[data-theme="dark"] .glass.glass-light {
+  background: rgba(22, 24, 34, 0.55);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .glass-nav[data-scrolled="true"] {
+  background-color: rgba(18, 19, 28, 0.62);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .bg-white\/50,
+[data-theme="dark"] .bg-white\/60,
+[data-theme="dark"] .bg-white\/70,
+[data-theme="dark"] .bg-white\/80,
+[data-theme="dark"] .bg-white {
+  background-color: rgba(30, 32, 44, 0.7);
+}
+

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTheme } from "@/lib/theme";
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Instance, Instances, RoundedBox } from "@react-three/drei";
@@ -81,6 +82,7 @@ function ShelfBooks({ position }: { position: [number, number, number] }) {
 }
 
 function Shelf() {
+  const night = useTheme() === "dark";
   const y = 2.05;
   return (
     <group position={[-0.1, y, -2.08]}>
@@ -91,7 +93,7 @@ function Shelf() {
         <boxGeometry args={[1.82, 0.01, 0.02]} />
         <meshStandardMaterial color="#fff2c9" emissive="#ffc85a" emissiveIntensity={2.5} toneMapped={false} />
       </mesh>
-      <pointLight position={[0, -0.15, 0.2]} color="#ffc061" intensity={1.4} distance={2.2} decay={1.5} />
+      <pointLight position={[0, -0.15, 0.2]} color="#ffc061" intensity={night ? 3.2 : 1.4} distance={2.2} decay={1.5} />
       {[-0.75, 0.75].map((x) => (
         <mesh key={x} position={[x, -0.06, -0.06]}>
           <boxGeometry args={[0.03, 0.1, 0.1]} />

@@ -2,10 +2,12 @@
 
 import * as THREE from "three";
 import { Limb } from "./Limb";
+import { useTheme } from "@/lib/theme";
 
 const BLACK = "#16161a";
 
 export function Lamp({ position }: { position: [number, number, number] }) {
+  const night = useTheme() === "dark";
   const base: [number, number, number] = [0, 0.02, 0];
   const elbow: [number, number, number] = [0.04, 0.48, 0.02];
   const head: [number, number, number] = [0.3, 0.66, 0.2];
@@ -42,9 +44,12 @@ export function Lamp({ position }: { position: [number, number, number] }) {
         </mesh>
         <mesh position={[0, -0.07, 0]}>
           <sphereGeometry args={[0.035, 20, 16]} />
-          <meshStandardMaterial color="#fff6d8" emissive="#ffd36b" emissiveIntensity={3} toneMapped={false} />
+          <meshStandardMaterial color="#fff6d8" emissive="#ffd36b" emissiveIntensity={night ? 6 : 3} toneMapped={false} />
         </mesh>
-        <pointLight position={[0, -0.14, 0]} color="#ffbe55" intensity={2.2} distance={2.6} decay={1.6} />
+        <pointLight position={[0, -0.14, 0]} color="#ffbe55" intensity={night ? 4 : 2.2} distance={night ? 3.5 : 2.6} decay={1.6}
+          castShadow={night}
+          shadow-mapSize={[512, 512]}
+          shadow-bias={-0.002} />
       </group>
     </group>
   );

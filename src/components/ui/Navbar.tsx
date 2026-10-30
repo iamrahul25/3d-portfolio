@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { profile } from "@/data/portfolio";
+import { ThemeToggle } from "./ThemeToggle";
 
 const LINKS = [
   { label: "Work", href: "/#work" },
@@ -48,6 +49,9 @@ export function Navbar() {
             </li>
           ))}
           <li>
+            <ThemeToggle />
+          </li>
+          <li>
             <Link
               href="/#contact"
               className="rounded-full bg-ink px-4 py-2 text-cream transition-transform hover:scale-105"
@@ -57,6 +61,8 @@ export function Navbar() {
           </li>
         </ul>
 
+        <div className="flex items-center gap-2 md:hidden">
+        <ThemeToggle />
         <button
           aria-label="Toggle menu"
           aria-expanded={open}
@@ -66,6 +72,7 @@ export function Navbar() {
           <motion.span animate={open ? { rotate: 45, y: 4 } : { rotate: 0, y: 0 }} className="h-0.5 w-5 bg-ink" />
           <motion.span animate={open ? { rotate: -45, y: -4 } : { rotate: 0, y: 0 }} className="h-0.5 w-5 bg-ink" />
         </button>
+        </div>
       </nav>
 
       <AnimatePresence>
