@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   CameraControls,
@@ -11,7 +11,6 @@ import {
   PerformanceMonitor,
   Sparkles,
 } from "@react-three/drei";
-import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import * as THREE from "three";
 import type { Project } from "@/data/portfolio";
 import { Room } from "./Room";
@@ -398,15 +397,17 @@ function NightAmbience() {
   );
 }
 
-// Bloom only at night (when the lamp, shelf strip and screens are the light sources) and
-// only on devices that can afford a full-screen pass.
+// Bloom only at night and only on devices that can afford it. The postprocessing
+// libraries (~100 kB) live in their own chunk and load on first use.
+const NightBloomFx = lazy(() => import("./NightBloomFx"));
+
 function NightBloom({ capable }: { capable: boolean }) {
   const night = useTheme() === "dark";
   if (!night || !capable) return null;
   return (
-    <EffectComposer multisampling={4} enableNormalPass={false}>
-      <Bloom mipmapBlur intensity={0.7} luminanceThreshold={1.05} luminanceSmoothing={0.2} radius={0.7} />
-    </EffectComposer>
+    <Suspense fallback={null}>
+      <NightBloomFx />
+    </Suspense>
   );
 }
 
