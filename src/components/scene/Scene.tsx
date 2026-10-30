@@ -258,6 +258,8 @@ function CameraRig({
   useEffect(() => {
     if (prevTheme.current === theme) return;
     prevTheme.current = theme;
+    // Hold the 360° spin for a few seconds so the lighting change can be seen from the same angle.
+    lastInteraction.current = performance.now() + 4000;
     const c = controls.current;
     if (!c || view !== "overview" || immersive) return;
     const dir = theme === "dark" ? 1 : -1;
@@ -265,7 +267,6 @@ function CameraRig({
     // Lean in slightly and settle lower at night, back out by day. Small enough to stay inside the room bounds.
     c.rotate(0, dir * THREE.MathUtils.degToRad(-2.5), true);
     c.dolly(dir * 0.18, true);
-    lastInteraction.current = performance.now();
   }, [theme, view, immersive]);
 
   useFrame((_, delta) => {
