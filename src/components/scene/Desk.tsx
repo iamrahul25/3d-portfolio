@@ -38,7 +38,7 @@ function Keyboard({ position }: { position: [number, number, number] }) {
       <RoundedBox args={[0.46, 0.018, 0.17]} radius={0.007} smoothness={3} rotation-x={0.035} castShadow receiveShadow>
         <meshStandardMaterial color="#3a3c43" metalness={0.75} roughness={0.38} roughnessMap={brushed} />
       </RoundedBox>
-      <Instances limit={100} geometry={keycap} castShadow>
+      <Instances limit={100} geometry={keycap} frames={1}>
         <meshStandardMaterial color="#25262c" roughness={0.55} />
         {keys.map((k, i) => (
           <Instance key={i} position={[k.x, 0.014 + (k.z + 0.06) * 0.03, k.z]} scale={[k.w, 1, 1]} />

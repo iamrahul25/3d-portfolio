@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
@@ -34,6 +34,8 @@ function makeLeaf() {
   return g;
 }
 const leafGeometry = makeLeaf();
+const stemGeometry = new THREE.CylinderGeometry(0.004, 0.005, 1, 5);
+const pebbleGeometry = new THREE.SphereGeometry(1, 8, 6);
 
 function makePot(r: number, h: number) {
   const P = (x: number, y: number) => new THREE.Vector2(x, y);
@@ -112,6 +114,43 @@ export function Plant({
     });
   }, [seed, potRadius, potHeight]);
 
+  // Leaves, stems and pebbles are instanced: one draw call each instead of one per piece.
+  const leavesRef = useRef<THREE.InstancedMesh>(null);
+  const stemsRef = useRef<THREE.InstancedMesh>(null);
+  const pebblesRef = useRef<THREE.InstancedMesh>(null);
+  useLayoutEffect(() => {
+    const leavesMesh = leavesRef.current, stemsMesh = stemsRef.current, pebblesMesh = pebblesRef.current;
+    if (!leavesMesh || !stemsMesh || !pebblesMesh) return;
+    const m = new THREE.Matrix4();
+    const base = new THREE.Matrix4();
+    const tmp = new THREE.Matrix4();
+    leafData.forEach((l, i) => {
+      base
+        .makeRotationY(l.angle)
+        .multiply(tmp.makeTranslation(0, 0, l.off))
+        .multiply(tmp.makeRotationX(l.lean));
+      m.copy(base).multiply(tmp.makeTranslation(0, l.stem / 2, 0)).multiply(tmp.makeScale(1, l.stem, 1));
+      stemsMesh.setMatrixAt(i, m);
+      m.copy(base)
+        .multiply(tmp.makeTranslation(0, l.stem, 0))
+        .multiply(tmp.makeRotationX(l.tilt))
+        .multiply(tmp.makeRotationY(l.twist))
+        .multiply(tmp.makeScale(l.width * 2, l.len * 2, l.len * 2));
+      leavesMesh.setMatrixAt(i, m);
+      leavesMesh.setColorAt(i, l.color);
+    });
+    const c = new THREE.Color();
+    pebbles.forEach((pb, i) => {
+      pebblesMesh.setMatrixAt(i, m.makeScale(pb.s, pb.s * 0.6, pb.s).setPosition(...pb.p));
+      pebblesMesh.setColorAt(i, c.set(pb.c));
+    });
+    for (const mesh of [leavesMesh, stemsMesh, pebblesMesh]) {
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      mesh.computeBoundingSphere();
+    }
+  }, [leafData, pebbles]);
+
   useFrame(({ clock }) => {
     if (!group.current) return;
     const t = clock.elapsedTime;
@@ -132,28 +171,16 @@ export function Plant({
       <mesh geometry={soil} position={[0, potHeight - 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <meshStandardMaterial color="#3e2b1f" roughness={1} />
       </mesh>
-      {pebbles.map((pb, i) => (
-        <mesh key={i} position={pb.p} scale={[pb.s, pb.s * 0.6, pb.s]}>
-          <sphereGeometry args={[1, 8, 6]} />
-          <meshStandardMaterial color={pb.c} roughness={0.9} />
-        </mesh>
-      ))}
+      <instancedMesh ref={pebblesRef} args={[pebbleGeometry, undefined, pebbles.length]}>
+        <meshStandardMaterial roughness={0.9} />
+      </instancedMesh>
       <group ref={group} position={[0, potHeight - 0.025, 0]}>
-        {leafData.map((l, i) => (
-          <group key={i} rotation={[0, l.angle, 0]}>
-           <group position={[0, 0, l.off]} rotation-x={l.lean}>
-            <mesh position={[0, l.stem / 2, 0]}>
-              <cylinderGeometry args={[0.004, 0.005, l.stem, 5]} />
-              <meshStandardMaterial color="#4a7a35" roughness={0.6} />
-            </mesh>
-            <group position={[0, l.stem, 0]} rotation={[l.tilt, 0, 0]}>
-              <mesh geometry={leafGeometry} rotation-y={l.twist} scale={[l.width * 2, l.len * 2, l.len * 2]} castShadow>
-                <meshPhysicalMaterial color={l.color} vertexColors roughness={0.5} sheen={0.4} sheenColor="#d8f5b0" side={THREE.DoubleSide} />
-              </mesh>
-            </group>
-           </group>
-          </group>
-        ))}
+        <instancedMesh ref={stemsRef} args={[stemGeometry, undefined, leafData.length]} castShadow>
+          <meshStandardMaterial color="#4a7a35" roughness={0.6} />
+        </instancedMesh>
+        <instancedMesh ref={leavesRef} args={[leafGeometry, undefined, leafData.length]} castShadow>
+          <meshPhysicalMaterial vertexColors roughness={0.5} sheen={0.4} sheenColor="#d8f5b0" side={THREE.DoubleSide} />
+        </instancedMesh>
       </group>
     </group>
   );

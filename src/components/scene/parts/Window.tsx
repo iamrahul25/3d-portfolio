@@ -107,7 +107,15 @@ export function Window({ width = 0.9, height = 1 }: { width?: number; height?: n
           toneMapped={false}
         />
       </mesh>
-      <pointLight ref={spill} position={[0, -0.1, 0.6]} color="#7d92ff" intensity={0} distance={2.4} decay={1.8} />
+      <pointLight
+        ref={spill}
+        position={[0, -0.1, 0.6]}
+        color="#7d92ff"
+        intensity={0}
+        distance={2.4}
+        decay={1.8}
+        userData={{ phase: "night" }}
+      />
       {/* frame */}
       {[
         [0, height / 2 + t / 2, width + t * 2, t],

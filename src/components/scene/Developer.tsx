@@ -2,7 +2,7 @@
 
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { RoundedBox } from "@react-three/drei";
+import { Instance, Instances, RoundedBox } from "@react-three/drei";
 import * as THREE from "three";
 import { Limb } from "./parts/Limb";
 import { fabricTexture } from "./materials";
@@ -181,12 +181,13 @@ export function Developer({ position }: { position: V3 }) {
             <sphereGeometry args={[0.112, 32, 24, 0, Math.PI * 2, 0, Math.PI * 0.6]} />
             <meshStandardMaterial color={HAIR} roughness={0.9} side={THREE.DoubleSide} />
           </mesh>
-          {tufts.map((t, i) => (
-            <mesh key={i} position={t.pos}>
-              <sphereGeometry args={[t.r, 12, 10]} />
-              <meshStandardMaterial color={HAIR} roughness={0.9} />
-            </mesh>
-          ))}
+          <Instances limit={tufts.length} frames={1} castShadow>
+            <sphereGeometry args={[1, 12, 10]} />
+            <meshStandardMaterial color={HAIR} roughness={0.9} />
+            {tufts.map((t, i) => (
+              <Instance key={i} position={t.pos} scale={t.r} />
+            ))}
+          </Instances>
           <mesh position={[0.02, 0.05, -0.09]} rotation={[0.9, 0, 0.2]} scale={[1.6, 0.5, 1]}>
             <sphereGeometry args={[0.04, 12, 10]} />
             <meshStandardMaterial color={HAIR} roughness={0.9} />

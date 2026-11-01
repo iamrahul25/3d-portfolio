@@ -38,6 +38,7 @@ function FadingWall({
     return t;
   }, [size]);
   const ao = aoGradient();
+  const hidden = useRef(false);
 
   useFrame(({ camera }, delta) => {
     if (!material.current || !group.current) return;
@@ -46,12 +47,20 @@ function FadingWall({
     const m = material.current;
     m.opacity = THREE.MathUtils.damp(m.opacity, target, 6, delta);
     m.depthWrite = m.opacity > 0.95;
-    group.current.visible = m.opacity > 0.02;
+    const hide = m.opacity <= 0.02;
+    if (hide === hidden.current) return;
+    hidden.current = hide;
+    // Only drawables are hidden: hiding the shelf/window lights too would change the scene's
+    // light count, which recompiles every lit shader each time the camera swings past a wall.
+    group.current.traverse((o) => {
+      if ((o as THREE.Mesh).isMesh || (o as THREE.Sprite).isSprite || (o as THREE.Points).isPoints) o.visible = !hide;
+    });
   });
 
   return (
     <group ref={group}>
-      <group position={position} rotation={rotation}>
+      {/* the key light sits in front of both walls, so their shadows would land outside the room */}
+      <group position={position} rotation={rotation} userData={{ noCastShadow: true }}>
         <mesh receiveShadow>
           <planeGeometry args={size} />
           <meshStandardMaterial
@@ -329,12 +338,13 @@ function PCTower({ position }: { position: [number, number, number] }) {
       <RoundedBox args={[0.2, 0.4, 0.008]} radius={0.003} position={[0, 0.25, 0.231]}>
         <meshStandardMaterial color="#141417" roughness={0.85} metalness={0.2} />
       </RoundedBox>
-      {Array.from({ length: 18 }, (_, i) => (
-        <mesh key={i} position={[-0.02, 0.08 + i * 0.019, 0.2355]}>
-          <boxGeometry args={[0.13, 0.006, 0.001]} />
-          <meshStandardMaterial color="#26262b" roughness={0.6} />
-        </mesh>
-      ))}
+      <Instances limit={18} frames={1}>
+        <boxGeometry args={[0.13, 0.006, 0.001]} />
+        <meshStandardMaterial color="#26262b" roughness={0.6} />
+        {Array.from({ length: 18 }, (_, i) => (
+          <Instance key={i} position={[-0.02, 0.08 + i * 0.019, 0.2355]} />
+        ))}
+      </Instances>
       {/* light strip */}
       <mesh position={[0.08, 0.25, 0.236]}>
         <boxGeometry args={[0.008, 0.34, 0.002]} />
@@ -391,7 +401,7 @@ function Rug() {
       </mesh>
       {/* fringe on the short ends */}
       {[-1, 1].map((side) => (
-        <Instances key={side} limit={80}>
+        <Instances key={side} limit={80} frames={1}>
           <boxGeometry args={[0.004, 0.003, 0.05]} />
           <meshStandardMaterial color="#efe0c4" roughness={1} />
           {Array.from({ length: 70 }, (_, i) => (
@@ -412,11 +422,18 @@ export function Room() {
   }, []);
   return (
     <group>
-      <RoundedBox args={[5.4, 0.16, 4.2]} radius={0.05} smoothness={4} position={[0, -0.08, -0.15]} receiveShadow>
+      <RoundedBox
+        args={[5.4, 0.16, 4.2]}
+        radius={0.05}
+        smoothness={4}
+        position={[0, -0.08, -0.15]}
+        receiveShadow
+        userData={{ noCastShadow: true }}
+      >
         <meshStandardMaterial color="#e3d6c4" roughness={0.9} />
       </RoundedBox>
       {/* light oak floorboards with a soft satin finish */}
-      <mesh position={[0, 0.0005, -0.15]} rotation-x={-Math.PI / 2} receiveShadow>
+      <mesh position={[0, 0.0005, -0.15]} rotation-x={-Math.PI / 2} receiveShadow userData={{ noCastShadow: true }}>
         <planeGeometry args={[5.3, 4.1]} />
         <meshPhysicalMaterial
           color="#f6ece0"

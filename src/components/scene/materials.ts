@@ -26,6 +26,35 @@ function rng(seed: number) {
   return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
 }
 
+// Thousands of tiny strokes cost one path + one stroke() each; grouping them by colour and
+// (quantised) alpha draws the same marks in a handful of calls.
+const ALPHA_STEPS = 6;
+function bucketed(g: CanvasRenderingContext2D) {
+  const paths = new Map<string, Path2D>();
+  return {
+    path(rgb: string, alpha: number, min: number, max: number) {
+      const step = Math.min(ALPHA_STEPS - 1, Math.floor(((alpha - min) / (max - min)) * ALPHA_STEPS));
+      const key = `${rgb}|${min + ((step + 0.5) / ALPHA_STEPS) * (max - min)}`;
+      let p = paths.get(key);
+      if (!p) paths.set(key, (p = new Path2D()));
+      return p;
+    },
+    flush(mode: "fill" | "stroke") {
+      for (const [key, p] of paths) {
+        const [rgb, a] = key.split("|");
+        const style = `rgba(${rgb},${a})`;
+        if (mode === "fill") {
+          g.fillStyle = style;
+          g.fill(p);
+        } else {
+          g.strokeStyle = style;
+          g.stroke(p);
+        }
+      }
+    },
+  };
+}
+
 /** Oak-like grain running along X. Use as `map` (tinted by colour) and as `bumpMap`. */
 export function woodTexture(base = "#d2a46c", seed = 7) {
   return make(`wood-${base}-${seed}`, 512, (g, s) => {
@@ -136,14 +165,21 @@ export function corkTexture(seed = 13) {
     const r = rng(seed);
     g.fillStyle = "#c39468";
     g.fillRect(0, 0, s, s);
+    const granules = bucketed(g);
     for (let i = 0; i < 9000; i++) {
       const x = r() * s, y = r() * s, rad = 0.6 + r() * 2.2;
       const d = r();
-      g.fillStyle = d < 0.45 ? `rgba(110,60,25,${0.25 + r() * 0.4})` : d < 0.8 ? `rgba(235,185,125,${0.25 + r() * 0.35})` : `rgba(60,30,12,${0.3 + r() * 0.3})`;
-      g.beginPath();
-      g.ellipse(x, y, rad, rad * (0.6 + r() * 0.6), r() * 3, 0, Math.PI * 2);
-      g.fill();
+      const p =
+        d < 0.45
+          ? granules.path("110,60,25", 0.25 + r() * 0.4, 0.25, 0.65)
+          : d < 0.8
+            ? granules.path("235,185,125", 0.25 + r() * 0.35, 0.25, 0.6)
+            : granules.path("60,30,12", 0.3 + r() * 0.3, 0.3, 0.6);
+      const rx = rad, ry = rad * (0.6 + r() * 0.6), rot = r() * 3;
+      p.moveTo(x + rx * Math.cos(rot), y + rx * Math.sin(rot));
+      p.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2);
     }
+    granules.flush("fill");
   });
 }
 
@@ -153,15 +189,15 @@ export function rugTexture(base = "#eaa63a", seed = 17) {
     const r = rng(seed);
     g.fillStyle = base;
     g.fillRect(0, 0, s, s);
+    const fibres = bucketed(g);
+    g.lineWidth = 1;
     for (let i = 0; i < 60000; i++) {
       const x = r() * s, y = r() * s;
-      g.strokeStyle = r() < 0.5 ? `rgba(255,240,210,${0.05 + r() * 0.08})` : `rgba(90,50,10,${0.05 + r() * 0.09})`;
-      g.lineWidth = 1;
-      g.beginPath();
-      g.moveTo(x, y);
-      g.lineTo(x + (r() - 0.5) * 4, y + (r() - 0.5) * 4);
-      g.stroke();
+      const p = r() < 0.5 ? fibres.path("255,240,210", 0.05 + r() * 0.08, 0.05, 0.13) : fibres.path("90,50,10", 0.05 + r() * 0.09, 0.05, 0.14);
+      p.moveTo(x, y);
+      p.lineTo(x + (r() - 0.5) * 4, y + (r() - 0.5) * 4);
     }
+    fibres.flush("stroke");
     const band = s * 0.045;
     g.strokeStyle = "rgba(120,70,20,0.55)";
     g.lineWidth = band;

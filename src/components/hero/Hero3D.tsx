@@ -8,7 +8,8 @@ import { ProjectModal } from "@/components/ui/ProjectModal";
 import type { View } from "@/components/scene/Scene";
 import type { ScreenAction } from "@/components/scene/Monitors";
 
-const Scene = dynamic(() => import("@/components/scene/Scene"), { ssr: false });
+const loadScene = () => import("@/components/scene/Scene");
+const Scene = dynamic(loadScene, { ssr: false });
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -70,6 +71,8 @@ export function Hero3D() {
   const [inView, setInView] = useState(true);
   const sectionRef = useRef<HTMLElement>(null);
   useEffect(() => {
+    // Start downloading the ~900 kB three.js chunk right away; only mounting waits for idle.
+    loadScene();
     const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
     if (w.requestIdleCallback) w.requestIdleCallback(() => setMountScene(true), { timeout: 600 });
     else setTimeout(() => setMountScene(true), 200);
@@ -182,7 +185,7 @@ export function Hero3D() {
           {!ready && (
             <motion.div
               key="loader"
-              className="hero-bg absolute inset-0 z-20 flex flex-col items-center justify-center gap-4"
+              className="hero-bg absolute inset-0 z-20 flex flex-col items-center justify-end gap-4 pb-28 lg:justify-center lg:pb-0"
               exit={{ opacity: 0 }}
               transition={{ duration: 0.8 }}
             >
@@ -196,15 +199,17 @@ export function Hero3D() {
           )}
         </AnimatePresence>
 
-        <AnimatePresence>
-          {ready && view === "overview" && !immersive && (
+        {/* Server-rendered and visible from the first paint (it's the LCP element); it only
+            animates when coming back from the focus view. */}
+        <AnimatePresence initial={false}>
+          {view === "overview" && !immersive && (
             <motion.div
               key="intro"
               initial={{ opacity: 0, x: -30 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -30 }}
               transition={{ duration: 0.7, ease, delay: 0.6 }}
-              className="pointer-events-none absolute left-4 top-20 z-10 max-w-[19rem] sm:left-8 md:inset-y-0 md:top-0 md:flex md:items-center lg:left-12 lg:max-w-sm"
+              className="pointer-events-none absolute left-4 top-20 z-30 max-w-[19rem] sm:left-8 md:inset-y-0 md:top-0 md:flex md:items-center lg:left-12 lg:max-w-sm"
             >
               <div className="hero-card glass glass-light pointer-events-auto rounded-3xl p-5 shadow-xl shadow-black/5 sm:p-6 lg:p-7">
                 <div className="hero-badge flex items-center gap-2">

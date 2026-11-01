@@ -38,6 +38,7 @@ export type SceneProps = {
 };
 
 const FOV = 35;
+const TONE_MAPPING = THREE.AgXToneMapping;
 const OVERVIEW_TARGET = new THREE.Vector3(0, 0.95, -0.95);
 const OVERVIEW_DIR = new THREE.Vector3(2.6, 1.55, 3.6).normalize();
 const FOCUS_TARGET = new THREE.Vector3(...MAIN_MONITOR.position);
@@ -294,17 +295,248 @@ function CameraRig({
   );
 }
 
+// One shadow-map texel covers ~4 mm of the room, so smaller parts would only add draw calls.
+const MIN_CASTER_RADIUS = 0.02;
+const _worldScale = new THREE.Vector3();
+
+// Instanced meshes keep their own `castShadow` prop: their bounds say nothing about piece size.
+function castsShadow(mesh: THREE.Mesh) {
+  for (let o: THREE.Object3D | null = mesh; o; o = o.parent) if (o.userData.noCastShadow) return false;
+  if ((mesh as THREE.InstancedMesh).isInstancedMesh) return mesh.castShadow;
+  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+  if (materials.some((m) => m.type === "MeshBasicMaterial" || (m.transparent && m.opacity < 0.5))) return false;
+  if (!mesh.geometry.boundingSphere) mesh.geometry.computeBoundingSphere();
+  mesh.getWorldScale(_worldScale);
+  const scale = Math.max(Math.abs(_worldScale.x), Math.abs(_worldScale.y), Math.abs(_worldScale.z));
+  return mesh.geometry.boundingSphere!.radius * scale >= MIN_CASTER_RADIUS;
+}
+
 function AutoShadows() {
   const scene = useThree((s) => s.scene);
   useEffect(() => {
+    scene.updateMatrixWorld();
     scene.traverse((obj) => {
       const mesh = obj as THREE.Mesh;
       if (!mesh.isMesh) return;
-      const basic = (mesh.material as THREE.Material | undefined)?.type === "MeshBasicMaterial";
-      mesh.castShadow = !basic;
+      mesh.castShadow = castsShadow(mesh);
       mesh.receiveShadow = true;
     });
   }, [scene]);
+  return null;
+}
+
+const ENV_RESOLUTION = 256;
+const SHADOW_SIDE: Record<THREE.Side, THREE.Side> = {
+  [THREE.FrontSide]: THREE.BackSide,
+  [THREE.BackSide]: THREE.FrontSide,
+  [THREE.DoubleSide]: THREE.DoubleSide,
+};
+
+// WebGLShadowMap renders casters with a shared depth material onto which it copies each caster's
+// side/map/alphaMap, so its shader variants are invisible to compileAsync. These stand-ins share
+// the same program cache keys, which lets those variants compile up front as well.
+function shadowProxies(gl: THREE.WebGLRenderer, scene: THREE.Scene, pointLight: boolean) {
+  const root = new THREE.Scene();
+  const seen = new Set<string>();
+  scene.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh || !mesh.castShadow || mesh.customDepthMaterial || mesh.customDistanceMaterial) return;
+    const instanced = mesh as THREE.InstancedMesh;
+    const { attributes } = mesh.geometry;
+    for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+      const side = m.shadowSide ?? (gl.shadowMap.type === THREE.VSMShadowMap ? m.side : SHADOW_SIDE[m.side]);
+      const { map = null, alphaMap = null } = m as THREE.MeshStandardMaterial;
+      const key = [
+        instanced.isInstancedMesh,
+        !!instanced.instanceColor,
+        side,
+        map?.uuid,
+        alphaMap?.uuid,
+        m.alphaTest,
+        !!attributes.normal,
+        !!attributes.uv1,
+        !!attributes.uv2,
+        !!attributes.uv3,
+      ].join();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const params = { side, map, alphaMap, alphaTest: m.alphaTest };
+      const material = pointLight ? new THREE.MeshDistanceMaterial(params) : new THREE.MeshDepthMaterial(params);
+      if (instanced.isInstancedMesh) {
+        const proxy = new THREE.InstancedMesh(mesh.geometry, material, instanced.count);
+        proxy.instanceMatrix = instanced.instanceMatrix;
+        proxy.instanceColor = instanced.instanceColor;
+        root.add(proxy);
+      } else {
+        root.add(new THREE.Mesh(mesh.geometry, material));
+      }
+    }
+  });
+  return root;
+}
+
+// three compiles the PMREM prefilter shader synchronously the first time the environment map is
+// prefiltered (~0.5 s on some GPUs). An identical material compiled async while the scene graph
+// is still being built lets that step pick the finished program from the cache instead.
+let pmremWarmup: Promise<unknown> = Promise.resolve();
+function createRenderer(params: THREE.WebGLRendererParameters) {
+  const gl = new THREE.WebGLRenderer(params);
+  // Reading back shader logs makes the first use of every program wait on the driver.
+  gl.debug.checkShaderErrors = process.env.NODE_ENV !== "production";
+  const pmrem = new THREE.PMREMGenerator(gl) as unknown as {
+    _lodMax: number;
+    _cubeSize: number;
+    _allocateTargets?: () => THREE.WebGLRenderTarget;
+    _ggxMaterial?: THREE.Material | null;
+  };
+  if (typeof pmrem._allocateTargets === "function") {
+    pmrem._lodMax = Math.floor(Math.log2(ENV_RESOLUTION));
+    pmrem._cubeSize = 2 ** pmrem._lodMax;
+    pmrem._allocateTargets().dispose();
+    if (pmrem._ggxMaterial) {
+      // Any offscreen target gives the same (linear, untonemapped) variant PMREM renders with.
+      const offscreen = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType });
+      // Position-only, like PMREM's own planes: the attribute set is part of the program key.
+      const geometry = new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(9, 3));
+      gl.setRenderTarget(offscreen);
+      pmremWarmup = gl.compileAsync(new THREE.Mesh(geometry, pmrem._ggxMaterial), new THREE.Camera());
+      gl.setRenderTarget(null);
+      pmremWarmup.then(() => offscreen.dispose());
+    }
+  }
+  return gl;
+}
+
+// compileAsync only waits for each material's last program, but a material shared by different
+// kinds of objects (instanced or not, with or without normals...) gets one program per kind.
+function programsReady(gl: THREE.WebGLRenderer) {
+  const programs = (gl.info.programs ?? []) as unknown as { isReady(): boolean }[];
+  return new Promise<void>((resolve) => {
+    const check = () => (programs.every((p) => p.isReady()) ? resolve() : setTimeout(check, 10));
+    check();
+  });
+}
+
+// Lights that only matter in one theme are tagged `userData.phase` and hidden (not just dimmed)
+// while their intensity is zero, which drops them from every shader and skips their shadow pass.
+const PHASE_EPSILON = 1e-3;
+
+function phaseLights(scene: THREE.Scene) {
+  const lights: THREE.Light[] = [];
+  scene.traverse((o) => {
+    if ((o as THREE.Light).isLight && (o.userData.phase || o.userData.nightShadow)) lights.push(o as THREE.Light);
+  });
+  return lights;
+}
+
+type LightConfig = { day: boolean; night: boolean; lampShadow: boolean };
+
+function applyLightConfig(lights: THREE.Light[], config: LightConfig) {
+  for (const l of lights) {
+    if (l.userData.phase === "day") l.visible = config.day;
+    if (l.userData.phase === "night") l.visible = config.night;
+    if (l.userData.nightShadow) l.castShadow = config.lampShadow;
+  }
+}
+
+function snapshotLights(lights: THREE.Light[]) {
+  const saved = lights.map((l) => [l.visible, l.castShadow] as const);
+  return () => lights.forEach((l, i) => ([l.visible, l.castShadow] = saved[i]));
+}
+
+// Each phase switches as a group off the shared day/night blend, so the only light setups that
+// ever occur are day, night and the cross-fade between them (the ones Precompile warms).
+function LightCulling() {
+  const lights = useRef<THREE.Light[] | null>(null);
+  useFrame(({ scene }) => {
+    lights.current ??= phaseLights(scene).filter((l) => l.userData.phase);
+    const k = nightMix.value;
+    for (const l of lights.current) l.visible = l.userData.phase === "night" ? k > PHASE_EPSILON : k < 1 - PHASE_EPSILON;
+  });
+  return null;
+}
+
+// Compiles every shader with KHR_parallel_shader_compile before the first frame is drawn, so the
+// driver builds them on its own threads instead of stalling the page for seconds. Afterwards the
+// light setups used by the other theme (and the cross-fade between them) are warmed in idle time,
+// so the day/night toggle doesn't hitch either.
+function Precompile({ bloom, onDone }: { bloom: boolean; onDone: () => void }) {
+  const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
+  const lampShadows = !window.matchMedia("(pointer: coarse)").matches;
+  useEffect(() => {
+    let cancelled = false;
+    const night = document.documentElement.dataset.theme === "dark";
+    const lights = phaseLights(scene);
+    // Night bloom draws the scene into an offscreen target, which needs its own shader variants.
+    const offscreen = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType });
+    const depthProxies = shadowProxies(gl, scene, false);
+    const distanceProxies = lampShadows ? shadowProxies(gl, scene, true) : null;
+    const current: LightConfig = { day: !night, night, lampShadow: night && lampShadows };
+    const compileWith = (config: LightConfig, toTarget: boolean) => {
+      const restore = snapshotLights(lights);
+      const previous = { target: gl.getRenderTarget(), toneMapping: gl.toneMapping };
+      applyLightConfig(lights, config);
+      // The bloom composer swaps the renderer's tone mapping out while it's mounted.
+      gl.toneMapping = TONE_MAPPING;
+      gl.setRenderTarget(toTarget ? offscreen : null);
+      const ready = [gl.compileAsync(scene, camera)];
+      if (!toTarget) {
+        // Shadow passes draw into the shadow map, but take the scene's light setup into account.
+        gl.setRenderTarget(offscreen);
+        if (config.day) ready.push(gl.compileAsync(depthProxies, camera, scene));
+        if (config.lampShadow && distanceProxies) ready.push(gl.compileAsync(distanceProxies, camera, scene));
+      }
+      gl.setRenderTarget(previous.target);
+      gl.toneMapping = previous.toneMapping;
+      restore();
+      if (config !== current) {
+        // Compiling for another light setup leaves it behind in places three only refreshes for lit
+        // materials: unlit materials keep the warmed program, and shadow passes (which run before a
+        // frame sets up its lights) reuse the warmed light counts. Either way the next frame would
+        // pick up a program that may still be compiling and block on it, so the on-screen setup
+        // is compiled again (all cache hits) to put everything back.
+        gl.compile(scene, camera);
+      }
+      return Promise.all(ready);
+    };
+
+    applyLightConfig(lights, current);
+    // The bloom chunk loads lazily, so a night visit draws a few frames without it first.
+    const first = [false, ...(night && bloom ? [true] : [])].map((toTarget) =>
+      pmremWarmup.then(async () => {
+        if (!cancelled) await compileWith(current, toTarget);
+      }),
+    );
+    Promise.all(first).then(async () => {
+      await programsReady(gl);
+      if (cancelled) return;
+      onDone();
+      await new Promise((r) => setTimeout(r, 2500));
+      // Bloom can be switched off at runtime by the PerformanceMonitor, so night setups are warmed
+      // for both the on-screen and the offscreen (bloom) path.
+      const opposite: LightConfig = { day: night, night: !night, lampShadow: !night && lampShadows };
+      const toNight: LightConfig = { day: true, night: true, lampShadow: lampShadows };
+      const toDay: LightConfig = { day: true, night: true, lampShadow: false };
+      const variants = (config: LightConfig, nightBloom: boolean): [LightConfig, boolean][] =>
+        bloom && nightBloom ? [[config, false], [config, true]] : [[config, false]];
+      // Ordered by what the next toggle needs first: the cross-fade, then the settled theme.
+      const later = night
+        ? [...variants(toDay, false), ...variants(opposite, false), ...variants(toNight, true)]
+        : [...variants(toNight, true), ...variants(opposite, true), ...variants(toDay, false)];
+      for (const [config, toTarget] of later) {
+        if (cancelled) break;
+        await compileWith(config, toTarget);
+      }
+      offscreen.dispose();
+    });
+    return () => {
+      cancelled = true;
+      offscreen.dispose();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gl, scene, camera]);
   return null;
 }
 
@@ -320,7 +552,8 @@ function Ready({ onReady }: { onReady?: () => void }) {
 
 const DAY = { hemi: 0.75, amb: 0.15, key: 2.1, rim: 0.55, env: 0.45, moon: 0, exposure: 1.15 };
 const NIGHT = { hemi: 0.06, amb: 0.02, key: 0, rim: 0.12, env: 0.04, moon: 0.3, exposure: 0.95 };
-const _hemiSky = new THREE.Color();
+const HEMI_DAY = new THREE.Color("#fff4e6");
+const HEMI_NIGHT = new THREE.Color("#6f7cff");
 
 // Day/night lighting rig; values ease between the two presets so toggling feels like a dimmer.
 function Lights({ mobile = false }: { mobile?: boolean }) {
@@ -340,7 +573,7 @@ function Lights({ mobile = false }: { mobile?: boolean }) {
     const mix = (p: keyof typeof DAY) => THREE.MathUtils.lerp(DAY[p], NIGHT[p], k);
     if (hemi.current) {
       hemi.current.intensity = mix("hemi");
-      hemi.current.color.copy(_hemiSky.set("#fff4e6").lerp(new THREE.Color("#6f7cff"), k));
+      hemi.current.color.copy(HEMI_DAY).lerp(HEMI_NIGHT, k);
     }
     if (amb.current) amb.current.intensity = mix("amb");
     if (key.current) key.current.intensity = mix("key");
@@ -358,9 +591,10 @@ function Lights({ mobile = false }: { mobile?: boolean }) {
       {/* cool rim light from behind-left to separate silhouettes from the walls */}
       <directionalLight ref={rim} position={[-4, 3.5, -3]} intensity={0.55} color="#cfe0ff" />
       {/* moonlight, only visible at night */}
-      <directionalLight ref={moon} position={[4, 4, 4]} intensity={0} color="#8fa2ff" />
+      <directionalLight ref={moon} position={[4, 4, 4]} intensity={0} color="#8fa2ff" userData={{ phase: "night" }} />
       <directionalLight
         ref={key}
+        userData={{ phase: "day" }}
         position={[3.5, 6, 3.2]}
         intensity={2.1}
         color="#ffe6c4"
@@ -391,7 +625,15 @@ function NightAmbience() {
   const [mx, my, mz] = MAIN_MONITOR.position;
   return (
     <>
-      <pointLight ref={glow} position={[mx, my, mz + 0.45]} color="#9db4ff" intensity={0} distance={2.4} decay={1.8} />
+      <pointLight
+        ref={glow}
+        position={[mx, my, mz + 0.45]}
+        color="#9db4ff"
+        intensity={0}
+        distance={2.4}
+        decay={1.8}
+        userData={{ phase: "night" }}
+      />
       {night && (
         <Sparkles count={60} scale={[2.6, 1.6, 1.6]} position={[-0.6, 1.6, -1.2]} size={2.2} speed={0.25} opacity={0.55} color="#ffd59a" />
       )}
@@ -443,17 +685,17 @@ export default function Scene({
   const mobile = useIsMobile();
   const [dpr, setDpr] = useState(() => Math.max(1, Math.min(typeof window === "undefined" ? 1.5 : window.devicePixelRatio || 1, mobile ? 1.5 : 2)));
   const [fx, setFx] = useState(canAffordEffects);
+  const [compiled, setCompiled] = useState(false);
   return (
     <Canvas
-      frameloop={active ? "always" : "never"}
+      frameloop={active && compiled ? "always" : "never"}
       shadows="percentage"
       dpr={dpr}
-      gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
+      gl={(defaults) => createRenderer({ ...defaults, antialias: true, alpha: true, powerPreference: "high-performance" })}
       camera={{ fov: FOV, near: 0.05, far: 60, position: [6, 5, 8] }}
       onCreated={({ gl }) => {
-        gl.toneMapping = THREE.AgXToneMapping;
-        gl.toneMappingExposure = 1.15;
-      }}
+        gl.toneMapping = TONE_MAPPING;
+        gl.toneMappingExposure = 1.15;      }}
     >
       <Suspense fallback={null}>
         <PerformanceMonitor
@@ -484,9 +726,11 @@ export default function Scene({
         <Chair position={[-0.1, 0, -0.55]} />
         <Developer position={[-0.1, 0, 0]} />
 
-        <ContactShadows position={[0, -0.165, -0.15]} scale={9} blur={2.2} opacity={0.42} far={1.5} />
+        <ContactShadows position={[0, -0.165, -0.15]} scale={9} blur={2.2} opacity={0.42} far={1.5} frames={1} />
         <AutoShadows />
         <CameraRig view={view} autoRotate={autoRotate} zoom={zoom} immersive={immersive} resetKey={resetKey} />
+        <LightCulling />
+        <Precompile bloom={fx} onDone={() => setCompiled(true)} />
         <Ready onReady={onReady} />
       </Suspense>
     </Canvas>

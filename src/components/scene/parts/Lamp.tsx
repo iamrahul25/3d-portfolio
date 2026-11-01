@@ -120,6 +120,7 @@ export function Lamp({ position }: { position: [number, number, number] }) {
           distance={2.6}
           decay={1.6}
           castShadow={night && !coarse}
+          userData={{ nightShadow: !coarse }}
           shadow-mapSize={[512, 512]}
           shadow-bias={-0.002} />
       </group>

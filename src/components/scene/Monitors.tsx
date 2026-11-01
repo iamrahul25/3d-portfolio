@@ -111,12 +111,13 @@ export function MainMonitor({
           <meshStandardMaterial color="#d2d4da" metalness={0.7} roughness={0.4} roughnessMap={brushed} />
         </RoundedBox>
         {/* vent slots */}
-        {Array.from({ length: 14 }, (_, i) => (
-          <mesh key={i} position={[-0.26 + i * 0.04, height * 0.22, -0.0555]}>
-            <boxGeometry args={[0.022, 0.004, 0.002]} />
-            <meshStandardMaterial color="#5a5c63" roughness={0.6} />
-          </mesh>
-        ))}
+        <Instances limit={14} frames={1}>
+          <boxGeometry args={[0.022, 0.004, 0.002]} />
+          <meshStandardMaterial color="#5a5c63" roughness={0.6} />
+          {Array.from({ length: 14 }, (_, i) => (
+            <Instance key={i} position={[-0.26 + i * 0.04, height * 0.22, -0.0555]} />
+          ))}
+        </Instances>
         {/* power LED on chin */}
         <mesh position={[width / 2 - 0.04, -height / 2 - 0.022, 0.0175]}>
           <circleGeometry args={[0.003, 12]} />
@@ -163,8 +164,9 @@ export function CodeMonitor({
   position: [number, number, number];
   rotation: [number, number, number];
 }) {
-  const surface = useCanvasTexture(CODE_W, CODE_H);
-  const state = useRef({ chars: 0, acc: 0, pause: 0, blink: 0 });
+  // Re-uploaded several times a second, so it stays at 1× (a 2× canvas is ~15 MB per upload).
+  const surface = useCanvasTexture(CODE_W, CODE_H, 1);
+  const state = useRef({ chars: 0, acc: 0, pause: 0, blink: 0, drawn: "" });
 
   useFrame((_, delta) => {
     const s = state.current;
@@ -182,6 +184,9 @@ export function CodeMonitor({
       s.chars += 2;
     }
     const cursor = Math.floor(s.blink * 2) % 2 === 0;
+    const key = `${s.chars}:${cursor}`;
+    if (key === s.drawn) return;
+    s.drawn = key;
     surface.paint((ctx) => drawCodeScreen(ctx, CODE_W, CODE_H, s.chars, MONO, cursor));
   });
 
@@ -256,7 +261,7 @@ export function Laptop({
         <planeGeometry args={[0.296, 0.108]} />
         <meshStandardMaterial color="#202227" roughness={0.9} />
       </mesh>
-      <Instances limit={64} geometry={keycap}>
+      <Instances limit={64} geometry={keycap} frames={1}>
         <meshStandardMaterial color="#141519" roughness={0.6} />
         {keys.map((k, i) => (
           <Instance key={i} position={[k.x, 0.0098, k.z]} scale={[k.w, 1, 1]} />
